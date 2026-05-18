@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LeadForm } from "@/components/leads/lead-form";
+import { ArchiveDeleteActions } from "@/components/records/archive-delete-actions";
 import { assignedUsers, leads, leadSources, leadStatuses, loanPurposes, type LeadStatus } from "@/lib/data/leads";
 import { currency, cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
   const [loanType, setLoanType] = useState("All");
   const [source, setSource] = useState("All");
   const [assignedUser, setAssignedUser] = useState("All");
+  const [recordState, setRecordState] = useState("Active");
   const [formMode, setFormMode] = useState<"add" | "edit" | null>(null);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
 
@@ -45,10 +47,11 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
         (status === "All" || lead.status === status) &&
         (loanType === "All" || lead.loanPurpose === loanType) &&
         (source === "All" || lead.source === source) &&
-        (assignedUser === "All" || lead.assignedLoanOfficer === assignedUser)
+        (assignedUser === "All" || lead.assignedLoanOfficer === assignedUser) &&
+        (recordState === "Active" ? !lead.archivedAt && !lead.deletedAt : recordState === "Archived" ? Boolean(lead.archivedAt) && !lead.deletedAt : Boolean(lead.deletedAt))
       );
     });
-  }, [assignedUser, initialLeads, loanType, query, source, status]);
+  }, [assignedUser, initialLeads, loanType, query, recordState, source, status]);
 
   const editingLead = initialLeads.find((lead) => lead.id === editingLeadId);
 
@@ -78,7 +81,7 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
           <CardTitle>Search & Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr]">
             <div className="flex h-10 items-center rounded-md border border-slate-300 bg-white px-3">
               <Search size={17} className="text-slate-400" />
               <input
@@ -93,6 +96,7 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
             <Filter label="Loan type" value={loanType} options={["All", ...loanPurposes]} onChange={setLoanType} />
             <Filter label="Source" value={source} options={["All", ...leadSources]} onChange={setSource} />
             <Filter label="Assigned" value={assignedUser} options={["All", ...assignedUsers]} onChange={setAssignedUser} />
+            <Filter label="Records" value={recordState} options={["Active", "Archived", "Deleted"]} onChange={setRecordState} />
           </div>
         </CardContent>
       </Card>
@@ -162,6 +166,7 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
                         >
                           <Edit3 size={17} />
                         </button>
+                        <ArchiveDeleteActions recordId={lead.id} recordType="lead" />
                       </div>
                     </td>
                   </tr>

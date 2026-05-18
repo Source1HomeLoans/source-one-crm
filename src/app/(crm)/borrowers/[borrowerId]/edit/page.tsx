@@ -87,13 +87,15 @@ async function loadBorrower(borrowerId: string) {
     assignedLoanOfficer: profile.full_name,
     loanScenario: { purpose: selected, loanAmount: Number(row.estimated_loan_amount ?? 0), purchasePrice: Number(row.estimated_loan_amount ?? 0), downPayment: 0, occupancy: "TBD", timeline: "TBD" },
     employmentIncome: { employmentType: "TBD", employerOrBusiness: "TBD", monthlyIncome: 0, incomeDocumentation: "TBD", yearsInBusiness: "TBD" },
-    credit: { scoreRange: row.credit_score ? String(row.credit_score) : "Unknown", estimatedScore: Number(row.credit_score ?? 0), liabilities: "TBD", latePayments: "TBD" },
-    property: { address: String(row.property_address ?? "TBD"), propertyType: "TBD", units: "TBD", occupancy: "TBD", estimatedValue: Number(row.estimated_loan_amount ?? 0) },
+    credit: { scoreRange: row.credit_score_range ? String(row.credit_score_range) : row.credit_score ? String(row.credit_score) : "Unknown", estimatedScore: Number(row.credit_score ?? 0), liabilities: "TBD", latePayments: "TBD" },
+    property: { address: String(row.property_address ?? "TBD"), propertyType: String(row.property_type ?? "TBD"), units: "TBD", occupancy: "TBD", estimatedValue: Number(row.estimated_loan_amount ?? 0) },
     loanProgram: { selected, eligiblePrograms: [selected], notes: notes || "Created from lead conversion." },
     documents: [],
     notes: notes ? [{ author: profile.full_name, body: notes, created: "Current" }] : [],
     tasks: [],
     communications: [],
+    archivedAt: row.archived_at ? String(row.archived_at) : null,
+    deletedAt: row.deleted_at ? String(row.deleted_at) : null,
     borrowerStatus: String(row.borrower_status ?? "file_started")
   } as BorrowerProfile & { borrowerStatus: string };
 }

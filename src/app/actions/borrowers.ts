@@ -100,3 +100,51 @@ export async function updateBorrower(borrowerId: string, formData: FormData) {
   revalidatePath(`/borrowers/${borrowerId}/edit`);
   return success("Borrower updated.");
 }
+
+export async function archiveBorrower(borrowerId: string) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+
+  const { error } = await auth.supabase.from("borrowers").update({ archived_at: new Date().toISOString() }).eq("id", borrowerId);
+  if (error) return failure(error.message);
+
+  await writeBorrowerLifecycleActivity(borrowerId, auth.profile.id, "Record archived");
+  revalidatePath("/borrowers");
+  revalidatePath(`/borrowers/${borrowerId}`);
+  return success("Borrower archived.");
+}
+
+export async function deleteBorrower(borrowerId: string) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+
+  const { error } = await auth.supabase.from("borrowers").update({ deleted_at: new Date().toISOString() }).eq("id", borrowerId);
+  if (error) return failure(error.message);
+
+  await writeBorrowerLifecycleActivity(borrowerId, auth.profile.id, "Record deleted");
+  revalidatePath("/borrowers");
+  revalidatePath(`/borrowers/${borrowerId}`);
+  return success("Borrower deleted.");
+}
+
+async function writeBorrowerLifecycleActivity(borrowerId: string, actorId: string, eventType: "Record archived" | "Record deleted") {
+  const auth = await requirePermission("activity:view");
+  if (auth.error || !auth.supabase) return;
+
+  await auth.supabase.from("user_activity_events").insert({
+    actor_id: actorId,
+    event_type: eventType,
+    entity_table: "borrowers",
+    entity_id: borrowerId
+  });
+
+  await auth.supabase.from("communication_history").insert({
+    owner_id: actorId,
+    borrower_id: borrowerId,
+    channel: "system_update",
+    direction: "system",
+    subject: eventType,
+    summary: eventType,
+    occurred_at: new Date().toISOString()
+  });
+}

@@ -1,12 +1,29 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Eye, Plus } from "lucide-react";
 
+import { ArchiveDeleteActions } from "@/components/records/archive-delete-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { borrowers } from "@/lib/data/borrowers";
 
 export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrowers?: typeof borrowers }) {
+  const [recordState, setRecordState] = useState("Active");
+  const filteredBorrowers = useMemo(
+    () =>
+      initialBorrowers.filter((borrower) =>
+        recordState === "Active"
+          ? !borrower.archivedAt && !borrower.deletedAt
+          : recordState === "Archived"
+            ? Boolean(borrower.archivedAt) && !borrower.deletedAt
+            : Boolean(borrower.deletedAt)
+      ),
+    [initialBorrowers, recordState]
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -23,8 +40,20 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Borrower Profiles</CardTitle>
+          <select
+            value={recordState}
+            onChange={(event) => setRecordState(event.target.value)}
+            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+            aria-label="Borrower record status"
+          >
+            {["Active", "Archived", "Deleted"].map((option) => (
+              <option key={option} value={option}>
+                {option} borrowers
+              </option>
+            ))}
+          </select>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -39,7 +68,7 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {initialBorrowers.map((borrower) => (
+                {filteredBorrowers.map((borrower) => (
                   <tr key={borrower.id} className="hover:bg-slate-50">
                     <td className="px-3 py-4 font-semibold text-brand-ink">
                       {borrower.firstName} {borrower.lastName}
@@ -53,13 +82,16 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
                     <td className="px-3 py-4 text-slate-700">${borrower.loanScenario.loanAmount.toLocaleString()}</td>
                     <td className="px-3 py-4 text-slate-700">{borrower.assignedLoanOfficer}</td>
                     <td className="px-3 py-4">
-                      <Link
-                        href={`/borrowers/${borrower.id}`}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-teal"
-                        aria-label={`View ${borrower.firstName} ${borrower.lastName}`}
-                      >
-                        <Eye size={17} />
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/borrowers/${borrower.id}`}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-teal"
+                          aria-label={`View ${borrower.firstName} ${borrower.lastName}`}
+                        >
+                          <Eye size={17} />
+                        </Link>
+                        <ArchiveDeleteActions recordId={borrower.id} recordType="borrower" />
+                      </div>
                     </td>
                   </tr>
                 ))}

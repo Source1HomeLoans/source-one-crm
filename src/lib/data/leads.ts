@@ -17,6 +17,9 @@ export type Lead = {
   createdDate: string;
   lastContactDate: string;
   notes: string;
+  archivedAt?: string | null;
+  deletedAt?: string | null;
+  borrowerStatus?: string | null;
 };
 
 export const leadStatuses: LeadStatus[] = ["New", "Contacted", "Prequalified", "Application Sent", "In Process", "Closed", "Lost"];

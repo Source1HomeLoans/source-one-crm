@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, Mail, Phone, RefreshCw, UserRound } from "luci
 import { convertLeadToBorrowerAndRedirect } from "@/app/actions/leads";
 import { ActivityLog } from "@/components/activity/activity-log";
 import { LeadForm } from "@/components/leads/lead-form";
+import { ArchiveDeleteActions } from "@/components/records/archive-delete-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasSupabaseConfig } from "@/lib/env";
@@ -82,6 +83,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <form action={convertLeadToBorrowerAndRedirect.bind(null, lead.id)}>
             <button type="submit" className={buttonClass("primary")}>Convert to borrower</button>
           </form>
+          <ArchiveDeleteActions recordId={lead.id} recordType="lead" returnHref="/leads" compact={false} />
         </div>
       </div>
 

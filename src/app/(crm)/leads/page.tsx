@@ -57,9 +57,11 @@ export default async function LeadsPage() {
       assignedLoanOfficer: row.owner_id === profile?.id ? profile.full_name : "Assigned user",
       createdDate: String(row.created_at ?? "").slice(0, 10),
       lastContactDate: row.last_contact_at ? String(row.last_contact_at).slice(0, 10) : "Not contacted",
-      notes: String(row.notes ?? "")
+      notes: String(row.notes ?? ""),
+      archivedAt: row.archived_at ? String(row.archived_at) : null,
+      deletedAt: row.deleted_at ? String(row.deleted_at) : null
     };
   });
 
-  return <LeadList initialLeads={liveLeads?.length ? liveLeads : demoLeads} />;
+  return <LeadList initialLeads={profile ? liveLeads ?? [] : demoLeads} />;
 }

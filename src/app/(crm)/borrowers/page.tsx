@@ -54,14 +54,14 @@ export default async function BorrowersPage() {
         yearsInBusiness: "TBD"
       },
       credit: {
-        scoreRange: row.credit_score ? String(row.credit_score) : "Unknown",
+        scoreRange: row.credit_score_range ? String(row.credit_score_range) : row.credit_score ? String(row.credit_score) : "Unknown",
         estimatedScore: Number(row.credit_score ?? 0),
         liabilities: "TBD",
         latePayments: "TBD"
       },
       property: {
-        address: "TBD",
-        propertyType: "TBD",
+        address: String(row.property_address ?? "TBD"),
+        propertyType: String(row.property_type ?? "TBD"),
         units: "TBD",
         occupancy: "TBD",
         estimatedValue: Number(row.estimated_loan_amount ?? 0)
@@ -74,9 +74,12 @@ export default async function BorrowersPage() {
       documents: [],
       notes: [],
       tasks: [],
-      communications: []
+      communications: [],
+      archivedAt: row.archived_at ? String(row.archived_at) : null,
+      deletedAt: row.deleted_at ? String(row.deleted_at) : null,
+      borrowerStatus: String(row.borrower_status ?? "file_started")
     };
   });
 
-  return <BorrowerList initialBorrowers={liveBorrowers?.length ? liveBorrowers : demoBorrowers} />;
+  return <BorrowerList initialBorrowers={profile ? liveBorrowers ?? [] : demoBorrowers} />;
 }

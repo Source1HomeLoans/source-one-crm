@@ -56,6 +56,11 @@ export type BorrowerProfile = {
   notes: Array<{ author: string; body: string; created: string }>;
   tasks: Array<{ title: string; due: string; priority: string; status: string }>;
   communications: Array<{ channel: string; direction: string; subject: string; date: string; summary: string }>;
+  archivedAt?: string | null;
+  deletedAt?: string | null;
+  borrowerStatus?: string;
+  borrowerStatusLabel?: string;
+  linkedLeadStatus?: string | null;
 };
 
 export const loanPrograms: LoanProgram[] = [

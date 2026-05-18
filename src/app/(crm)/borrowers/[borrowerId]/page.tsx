@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Edit3 } from "lucide-react";
 
 import { BorrowerProfile } from "@/components/borrowers/borrower-profile";
+import { ArchiveDeleteActions } from "@/components/records/archive-delete-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { borrowers as demoBorrowers, getBorrowerById, type BorrowerProfile as BorrowerProfileData, type LoanProgram } from "@/lib/data/borrowers";
@@ -49,10 +50,13 @@ export default async function BorrowerProfilePage({ params }: { params: { borrow
           <ArrowLeft size={17} />
           Back to borrowers
         </Link>
-        <Link href={`/borrowers/${borrower.id}/edit`} className={buttonClass("primary")}>
-          <Edit3 size={17} />
-          Edit borrower
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/borrowers/${borrower.id}/edit`} className={buttonClass("primary")}>
+            <Edit3 size={17} />
+            Edit borrower
+          </Link>
+          <ArchiveDeleteActions recordId={borrower.id} recordType="borrower" returnHref="/borrowers" compact={false} />
+        </div>
       </div>
 
       <Card>
@@ -113,13 +117,15 @@ function mapBorrower(row: Record<string, string | number | boolean | null>, owne
       timeline: "TBD"
     },
     employmentIncome: { employmentType: "TBD", employerOrBusiness: "TBD", monthlyIncome: 0, incomeDocumentation: "TBD", yearsInBusiness: "TBD" },
-    credit: { scoreRange: row.credit_score ? String(row.credit_score) : "Unknown", estimatedScore: Number(row.credit_score ?? 0), liabilities: "TBD", latePayments: "TBD" },
-    property: { address: String(row.property_address ?? "TBD"), propertyType: "TBD", units: "TBD", occupancy: "TBD", estimatedValue: Number(row.estimated_loan_amount ?? 0) },
+    credit: { scoreRange: row.credit_score_range ? String(row.credit_score_range) : row.credit_score ? String(row.credit_score) : "Unknown", estimatedScore: Number(row.credit_score ?? 0), liabilities: "TBD", latePayments: "TBD" },
+    property: { address: String(row.property_address ?? "TBD"), propertyType: String(row.property_type ?? "TBD"), units: "TBD", occupancy: "TBD", estimatedValue: Number(row.estimated_loan_amount ?? 0) },
     loanProgram: { selected, eligiblePrograms: [selected], notes: notes || "Created from lead conversion." },
     documents: [],
     notes: notes ? [{ author: ownerName, body: notes, created: "Current" }] : [],
     tasks: [],
     communications: [],
+    archivedAt: row.archived_at ? String(row.archived_at) : null,
+    deletedAt: row.deleted_at ? String(row.deleted_at) : null,
     borrowerStatus: String(row.borrower_status ?? "file_started"),
     borrowerStatusLabel: statusLabel(String(row.borrower_status ?? "file_started"))
   } as BorrowerProfileData & { borrowerStatus: string; borrowerStatusLabel: string };

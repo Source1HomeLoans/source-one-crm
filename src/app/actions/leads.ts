@@ -38,6 +38,31 @@ const loanProgramMap: Record<string, string> = {
   no_doc: "no_doc"
 };
 
+const leadToBorrowerFieldMap = [
+  ["leads.first_name", "borrowers.first_name"],
+  ["leads.last_name", "borrowers.last_name"],
+  ["leads.phone", "borrowers.phone"],
+  ["leads.email", "borrowers.email"],
+  ["leads.property_state", "borrowers.property_state"],
+  ["leads.credit_score_range", "borrowers.credit_score_range"],
+  ["leads.estimated_loan_amount", "borrowers.estimated_loan_amount"],
+  ["leads.desired_loan_program", "borrowers.loan_program"],
+  ["leads.loan_purpose", "borrowers.loan_purpose"],
+  ["leads.property_type", "borrowers.property_type"],
+  ["leads.property_address", "borrowers.property_address"],
+  ["leads.source", "borrowers.lead_source"],
+  ["leads.owner_id", "borrowers.owner_id"],
+  ["leads.notes", "borrowers.notes"],
+  ["leads.id", "borrowers.source_lead_id"]
+] as const;
+
+const borrowerSchemaFallbackKeys = [
+  ...leadToBorrowerFieldMap
+    .map(([, borrowerColumn]) => borrowerColumn.replace("borrowers.", ""))
+    .filter((column) => !["first_name", "last_name", "phone", "email", "owner_id"].includes(column)),
+  "borrower_status"
+];
+
 const creditRangeMap: Record<string, (typeof creditRanges)[number]> = {
   "Below 580": "below_580",
   "580-619": "580_619",
@@ -105,6 +130,8 @@ function leadPayload(formData: FormData, ownerId: string) {
       estimated_loan_amount: estimatedLoanAmount,
       credit_score_range: creditScoreRange,
       property_state: mappedNullableText(formData, "property_state", "state"),
+      property_address: nullableText(formData, "property_address"),
+      property_type: nullableText(formData, "property_type"),
       last_contact_at: mappedNullableText(formData, "last_contact_at", "last-contact-date"),
       notes: nullableText(formData, "notes"),
       sms_consent: checkbox(formData, "sms_consent"),
@@ -231,11 +258,7 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
   const auth = await requirePermission("borrowers:manage");
   if (auth.error || !auth.supabase || !auth.profile) return { ...auth.error, created: false };
 
-  const { data: lead, error: leadError } = await auth.supabase
-    .from("leads")
-    .select("id, owner_id, borrower_id, referral_partner_id, first_name, last_name, phone, email, loan_purpose, estimated_loan_amount, property_state, sms_consent, email_consent, consent_collected_at, consent_source")
-    .eq("id", leadId)
-    .single();
+  const { data: lead, error: leadError } = await loadLeadForBorrowerConversion(leadId);
 
   if (leadError) return { ...failure(leadError.message), created: false };
   if (!lead) return { ...failure("Lead not found."), created: false };
@@ -257,32 +280,9 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
     return { ...success("Lead linked to existing borrower."), borrowerId: matchedBorrowerId, created: false };
   }
 
-  const { data: borrower, error: borrowerError } = await auth.supabase
-    .from("borrowers")
-    .insert({
-      owner_id: leadRow.owner_id ?? auth.profile.id,
-      referral_partner_id: leadRow.referral_partner_id,
-      first_name: leadRow.first_name,
-      last_name: leadRow.last_name,
-      email: leadRow.email,
-      phone: leadRow.phone,
-      consent_to_contact: Boolean(leadRow.sms_consent || leadRow.email_consent),
-      sms_consent: Boolean(leadRow.sms_consent),
-      email_consent: Boolean(leadRow.email_consent),
-      consent_collected_at: leadRow.consent_collected_at,
-      consent_source: leadRow.consent_source,
-      source_lead_id: leadId,
-      loan_purpose: leadRow.loan_purpose,
-      loan_program: loanProgramMap[String(leadRow.loan_purpose)] ?? "conventional",
-      estimated_loan_amount: leadRow.estimated_loan_amount,
-      property_state: leadRow.property_state,
-      borrower_status: "file_started",
-      notes: "Created from lead conversion."
-    })
-    .select("id")
-    .single();
-
-  if (borrowerError) return { ...failure(borrowerError.message), created: false };
+  const borrowerPayload = buildBorrowerPayloadFromLead(leadRow, leadId, auth.profile.id);
+  const { data: borrower, error: borrowerError } = await insertBorrowerWithSchemaFallback(borrowerPayload);
+  if (borrowerError) return { ...failure(borrowerError), created: false };
 
   const borrowerId = (borrower as { id?: string } | null)?.id;
   if (!borrowerId) return { ...failure("Borrower was created but no borrower ID was returned."), created: false };
@@ -295,6 +295,21 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
   return { ...success("Lead moved to In Process and borrower profile created."), borrowerId, created: true };
 }
 
+async function loadLeadForBorrowerConversion(leadId: string) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase) return { data: null, error: { message: auth.error.message } };
+
+  const richColumns =
+    "id, owner_id, borrower_id, referral_partner_id, first_name, last_name, phone, email, source, loan_purpose, desired_loan_program, estimated_loan_amount, credit_score_range, property_state, property_address, property_type, notes, sms_consent, email_consent, consent_collected_at, consent_source";
+  const baselineColumns =
+    "id, owner_id, borrower_id, referral_partner_id, first_name, last_name, phone, email, source, loan_purpose, desired_loan_program, estimated_loan_amount, credit_score_range, property_state, notes, sms_consent, email_consent, consent_collected_at, consent_source";
+
+  const rich = await auth.supabase.from("leads").select(richColumns).eq("id", leadId).single();
+  if (!rich.error) return rich;
+
+  return auth.supabase.from("leads").select(baselineColumns).eq("id", leadId).single();
+}
+
 async function findExistingBorrowerForLead(leadRow: Record<string, string | number | boolean | null>) {
   const auth = await requirePermission("borrowers:manage");
   if (auth.error || !auth.supabase) return null;
@@ -302,6 +317,16 @@ async function findExistingBorrowerForLead(leadRow: Record<string, string | numb
   const ownerId = typeof leadRow.owner_id === "string" ? leadRow.owner_id : null;
   const email = typeof leadRow.email === "string" && leadRow.email.trim() ? leadRow.email.trim() : null;
   const phone = typeof leadRow.phone === "string" && leadRow.phone.trim() ? leadRow.phone.trim() : null;
+
+  const leadId = typeof leadRow.id === "string" ? leadRow.id : null;
+
+  if (leadId) {
+    const { data, error } = await auth.supabase.from("borrowers").select("id").eq("source_lead_id", leadId).maybeSingle();
+    if (!error) {
+      const borrowerId = (data as { id?: string } | null)?.id;
+      if (borrowerId) return borrowerId;
+    }
+  }
 
   if (ownerId && email) {
     const { data } = await auth.supabase.from("borrowers").select("id").eq("owner_id", ownerId).ilike("email", email).maybeSingle();
@@ -316,6 +341,47 @@ async function findExistingBorrowerForLead(leadRow: Record<string, string | numb
   }
 
   return null;
+}
+
+function buildBorrowerPayloadFromLead(leadRow: Record<string, string | number | boolean | null>, leadId: string, fallbackOwnerId: string) {
+  const loanProgram = String(leadRow.desired_loan_program ?? loanProgramMap[String(leadRow.loan_purpose)] ?? "conventional");
+
+  return {
+    owner_id: leadRow.owner_id ?? fallbackOwnerId,
+    referral_partner_id: leadRow.referral_partner_id,
+    first_name: leadRow.first_name,
+    last_name: leadRow.last_name,
+    email: leadRow.email,
+    phone: leadRow.phone,
+    consent_to_contact: Boolean(leadRow.sms_consent || leadRow.email_consent),
+    sms_consent: Boolean(leadRow.sms_consent),
+    email_consent: Boolean(leadRow.email_consent),
+    consent_collected_at: leadRow.consent_collected_at,
+    consent_source: leadRow.consent_source,
+    source_lead_id: leadId,
+    loan_purpose: leadRow.loan_purpose,
+    loan_program: loanProgram,
+    estimated_loan_amount: leadRow.estimated_loan_amount,
+    credit_score_range: leadRow.credit_score_range,
+    property_state: leadRow.property_state,
+    property_address: leadRow.property_address,
+    property_type: leadRow.property_type,
+    lead_source: leadRow.source,
+    borrower_status: "file_started",
+    notes: leadRow.notes
+  };
+}
+
+async function insertBorrowerWithSchemaFallback(payload: Record<string, unknown>) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase) return { data: null, error: auth.error.message };
+
+  const { data, error } = await auth.supabase.from("borrowers").insert(payload).select("id").single();
+  if (!error) return { data, error: null };
+
+  const fallbackPayload = Object.fromEntries(Object.entries(payload).filter(([key]) => !borrowerSchemaFallbackKeys.includes(key)));
+  const fallback = await auth.supabase.from("borrowers").insert(fallbackPayload).select("id").single();
+  return { data: fallback.data, error: fallback.error?.message ?? null };
 }
 
 async function writeLeadConversionActivity(leadId: string, borrowerId: string, actorId: string, created: boolean) {
@@ -344,11 +410,49 @@ async function writeLeadConversionActivity(leadId: string, borrowerId: string, a
 
 export async function deleteLead(leadId: string) {
   const auth = await requirePermission("leads:manage");
-  if (auth.error || !auth.supabase) return auth.error;
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
 
-  const { error } = await auth.supabase.from("leads").delete().eq("id", leadId);
+  const { error } = await auth.supabase.from("leads").update({ deleted_at: new Date().toISOString() }).eq("id", leadId);
   if (error) return failure(error.message);
 
+  await writeRecordLifecycleActivity("leads", leadId, auth.profile.id, "Record deleted");
   revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
   return success("Lead deleted.");
+}
+
+export async function archiveLead(leadId: string) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+
+  const { error } = await auth.supabase.from("leads").update({ archived_at: new Date().toISOString() }).eq("id", leadId);
+  if (error) return failure(error.message);
+
+  await writeRecordLifecycleActivity("leads", leadId, auth.profile.id, "Record archived");
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  return success("Lead archived.");
+}
+
+async function writeRecordLifecycleActivity(table: "leads" | "borrowers", id: string, actorId: string | null, eventType: "Record archived" | "Record deleted") {
+  const auth = await requirePermission("activity:view");
+  if (auth.error || !auth.supabase || !actorId) return;
+
+  await auth.supabase.from("user_activity_events").insert({
+    actor_id: actorId,
+    event_type: eventType,
+    entity_table: table,
+    entity_id: id
+  });
+
+  await auth.supabase.from("communication_history").insert({
+    owner_id: actorId,
+    lead_id: table === "leads" ? id : null,
+    borrower_id: table === "borrowers" ? id : null,
+    channel: "system_update",
+    direction: "system",
+    subject: eventType,
+    summary: eventType,
+    occurred_at: new Date().toISOString()
+  });
 }
