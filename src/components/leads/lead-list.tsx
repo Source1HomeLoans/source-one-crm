@@ -21,7 +21,7 @@ const statusTones: Record<LeadStatus, "blue" | "green" | "gold" | "red" | "slate
   Lost: "red"
 };
 
-export function LeadList() {
+export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
   const [loanType, setLoanType] = useState("All");
@@ -33,7 +33,7 @@ export function LeadList() {
   const filteredLeads = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return leads.filter((lead) => {
+    return initialLeads.filter((lead) => {
       const matchesQuery =
         !normalizedQuery ||
         `${lead.firstName} ${lead.lastName}`.toLowerCase().includes(normalizedQuery) ||
@@ -48,9 +48,9 @@ export function LeadList() {
         (assignedUser === "All" || lead.assignedLoanOfficer === assignedUser)
       );
     });
-  }, [assignedUser, loanType, query, source, status]);
+  }, [assignedUser, initialLeads, loanType, query, source, status]);
 
-  const editingLead = leads.find((lead) => lead.id === editingLeadId);
+  const editingLead = initialLeads.find((lead) => lead.id === editingLeadId);
 
   return (
     <div className="space-y-5">
