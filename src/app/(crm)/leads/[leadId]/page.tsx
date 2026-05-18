@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Mail, Phone, RefreshCw, UserRound } from "lucide-react";
 
+import { convertLeadToBorrowerAndRedirect } from "@/app/actions/leads";
 import { ActivityLog } from "@/components/activity/activity-log";
 import { LeadForm } from "@/components/leads/lead-form";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,7 @@ const activityTypeLabels: Record<string, ActivityType> = {
 type LeadRow = Record<string, string | number | null>;
 type ActivityRow = Record<string, string | null>;
 
-export default async function LeadDetailPage({ params }: { params: { leadId: string } }) {
+export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams?: { conversion_error?: string } }) {
   const { lead, activities } = await loadLeadDetail(params.leadId);
 
   if (!lead) {
@@ -78,9 +79,17 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
         </Link>
         <div className="flex flex-wrap gap-2">
           <a href="#edit-lead" className={buttonClass("secondary")}>Edit lead</a>
-          <Link href={`/borrowers?convertLeadId=${lead.id}`} className={buttonClass("primary")}>Convert to borrower</Link>
+          <form action={convertLeadToBorrowerAndRedirect.bind(null, lead.id)}>
+            <button type="submit" className={buttonClass("primary")}>Convert to borrower</button>
+          </form>
         </div>
       </div>
+
+      {searchParams?.conversion_error ? (
+        <div className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {searchParams.conversion_error}
+        </div>
+      ) : null}
 
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
         <div>

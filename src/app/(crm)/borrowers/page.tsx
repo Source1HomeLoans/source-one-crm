@@ -1,7 +1,77 @@
 import { BorrowerList } from "@/components/borrowers/borrower-list";
+import { borrowers as demoBorrowers, type BorrowerProfile, type LoanProgram } from "@/lib/data/borrowers";
+import { hasSupabaseConfig } from "@/lib/env";
+import { borrowersQueryForRole } from "@/lib/supabase/rbac-queries";
+import { createServerClient, getCurrentProfile } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default function BorrowersPage() {
-  return <BorrowerList />;
+const loanProgramLabels: Record<string, LoanProgram> = {
+  purchase: "Conventional",
+  refinance: "Conventional",
+  dscr: "DSCR",
+  bank_statement: "Bank Statement",
+  p_and_l: "P&L",
+  no_doc: "No Doc"
+};
+
+export default async function BorrowersPage() {
+  const profile = hasSupabaseConfig() ? await getCurrentProfile() : null;
+  const supabase = profile ? createServerClient() : null;
+  const { data } = supabase && profile ? await borrowersQueryForRole(supabase, profile) : { data: null };
+  const liveBorrowers = data?.map((borrower): BorrowerProfile => {
+    const row = borrower as Record<string, string | number | boolean | null>;
+    const loanProgram = loanProgramLabels[String(row.loan_purpose)] ?? "Conventional";
+
+    return {
+      id: String(row.id),
+      firstName: String(row.first_name ?? ""),
+      lastName: String(row.last_name ?? ""),
+      phone: String(row.phone ?? ""),
+      email: String(row.email ?? ""),
+      preferredContact: row.sms_consent ? "SMS" : row.email_consent ? "Email" : "Phone",
+      state: String(row.property_state ?? ""),
+      consentToContact: Boolean(row.consent_to_contact),
+      assignedLoanOfficer: row.owner_id === profile?.id ? profile.full_name : "Assigned user",
+      loanScenario: {
+        purpose: String(row.loan_purpose ?? "purchase"),
+        loanAmount: Number(row.estimated_loan_amount ?? 0),
+        purchasePrice: Number(row.estimated_loan_amount ?? 0),
+        downPayment: 0,
+        occupancy: "TBD",
+        timeline: "TBD"
+      },
+      employmentIncome: {
+        employmentType: "TBD",
+        employerOrBusiness: "TBD",
+        monthlyIncome: 0,
+        incomeDocumentation: "TBD",
+        yearsInBusiness: "TBD"
+      },
+      credit: {
+        scoreRange: row.credit_score ? String(row.credit_score) : "Unknown",
+        estimatedScore: Number(row.credit_score ?? 0),
+        liabilities: "TBD",
+        latePayments: "TBD"
+      },
+      property: {
+        address: "TBD",
+        propertyType: "TBD",
+        units: "TBD",
+        occupancy: "TBD",
+        estimatedValue: Number(row.estimated_loan_amount ?? 0)
+      },
+      loanProgram: {
+        selected: loanProgram,
+        eligiblePrograms: [loanProgram],
+        notes: "Created from lead conversion."
+      },
+      documents: [],
+      notes: [],
+      tasks: [],
+      communications: []
+    };
+  });
+
+  return <BorrowerList initialBorrowers={liveBorrowers?.length ? liveBorrowers : demoBorrowers} />;
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requirePermission } from "@/app/actions/_helpers";
 import { checkbox, failure, formText, isAllowed, nullableNumber, nullableText, success, validateEmail, validatePhone } from "@/lib/validation/forms";
@@ -39,6 +40,7 @@ const creditRangeMap: Record<string, (typeof creditRanges)[number]> = {
 
 type LeadActionResult = ReturnType<typeof success> & {
   id?: string;
+  borrowerId?: string;
 };
 
 function mappedText(formData: FormData, dbKey: string, uiKey: string) {
@@ -153,9 +155,142 @@ export async function updateLead(leadId: string, formData: FormData) {
   const { error } = await auth.supabase.from("leads").update(payload).eq("id", leadId);
   if (error) return failure(error.message);
 
+  let conversion: { borrowerId?: string; created: boolean } | null = null;
+  if (payload.status === "in_process") {
+    const conversionResult = await convertLeadToBorrowerRecord(leadId);
+    if (!conversionResult.ok) {
+      return conversionResult;
+    }
+    conversion = { borrowerId: conversionResult.borrowerId, created: conversionResult.created };
+  }
+
   revalidatePath("/leads");
   revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/borrowers");
+
+  if (conversion?.created) {
+    return { ...success("Lead moved to In Process and borrower profile created."), borrowerId: conversion.borrowerId };
+  }
+
+  if (conversion?.borrowerId) {
+    return { ...success("Lead moved to In Process and linked to an existing borrower profile."), borrowerId: conversion.borrowerId };
+  }
+
   return success("Lead updated.");
+}
+
+export async function convertLeadToBorrower(leadId: string): Promise<LeadActionResult> {
+  const conversion = await convertLeadToBorrowerRecord(leadId);
+  if (!conversion.ok) {
+    return conversion;
+  }
+
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/borrowers");
+  return {
+    ...success(conversion.created ? "Lead moved to In Process and borrower profile created." : "Lead linked to an existing borrower profile."),
+    borrowerId: conversion.borrowerId
+  };
+}
+
+export async function convertLeadToBorrowerAndRedirect(leadId: string) {
+  const result = await convertLeadToBorrower(leadId);
+  if (!result.ok) {
+    redirect(`/leads/${leadId}?conversion_error=${encodeURIComponent(result.message)}`);
+  }
+
+  redirect("/borrowers");
+}
+
+async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionResult & { created: boolean })> {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return { ...auth.error, created: false };
+
+  const { data: lead, error: leadError } = await auth.supabase
+    .from("leads")
+    .select("id, owner_id, borrower_id, referral_partner_id, first_name, last_name, phone, email, loan_purpose, estimated_loan_amount, property_state, sms_consent, email_consent, consent_collected_at, consent_source")
+    .eq("id", leadId)
+    .single();
+
+  if (leadError) return { ...failure(leadError.message), created: false };
+  if (!lead) return { ...failure("Lead not found."), created: false };
+
+  const leadRow = lead as Record<string, string | number | boolean | null>;
+  const existingBorrowerId = typeof leadRow.borrower_id === "string" ? leadRow.borrower_id : null;
+
+  if (existingBorrowerId) {
+    await auth.supabase.from("leads").update({ status: "in_process", borrower_id: existingBorrowerId }).eq("id", leadId);
+    await writeLeadConversionActivity(leadId, existingBorrowerId, auth.profile.id, false);
+    return { ...success("Lead linked to existing borrower."), borrowerId: existingBorrowerId, created: false };
+  }
+
+  const { data: borrowerByLead } = await auth.supabase.from("borrowers").select("id").eq("source_lead_id", leadId).maybeSingle();
+  const linkedBorrowerId = (borrowerByLead as { id?: string } | null)?.id;
+
+  if (linkedBorrowerId) {
+    await auth.supabase.from("leads").update({ status: "in_process", borrower_id: linkedBorrowerId }).eq("id", leadId);
+    await writeLeadConversionActivity(leadId, linkedBorrowerId, auth.profile.id, false);
+    return { ...success("Lead linked to existing borrower."), borrowerId: linkedBorrowerId, created: false };
+  }
+
+  const { data: borrower, error: borrowerError } = await auth.supabase
+    .from("borrowers")
+    .insert({
+      owner_id: leadRow.owner_id ?? auth.profile.id,
+      referral_partner_id: leadRow.referral_partner_id,
+      first_name: leadRow.first_name,
+      last_name: leadRow.last_name,
+      email: leadRow.email,
+      phone: leadRow.phone,
+      consent_to_contact: Boolean(leadRow.sms_consent || leadRow.email_consent),
+      sms_consent: Boolean(leadRow.sms_consent),
+      email_consent: Boolean(leadRow.email_consent),
+      consent_collected_at: leadRow.consent_collected_at,
+      consent_source: leadRow.consent_source,
+      source_lead_id: leadId,
+      loan_purpose: leadRow.loan_purpose,
+      estimated_loan_amount: leadRow.estimated_loan_amount,
+      property_state: leadRow.property_state
+    })
+    .select("id")
+    .single();
+
+  if (borrowerError) return { ...failure(borrowerError.message), created: false };
+
+  const borrowerId = (borrower as { id?: string } | null)?.id;
+  if (!borrowerId) return { ...failure("Borrower was created but no borrower ID was returned."), created: false };
+
+  const { error: leadUpdateError } = await auth.supabase.from("leads").update({ status: "in_process", borrower_id: borrowerId }).eq("id", leadId);
+  if (leadUpdateError) return { ...failure(leadUpdateError.message), created: false };
+
+  await writeLeadConversionActivity(leadId, borrowerId, auth.profile.id, true);
+
+  return { ...success("Lead moved to In Process and borrower profile created."), borrowerId, created: true };
+}
+
+async function writeLeadConversionActivity(leadId: string, borrowerId: string, actorId: string, created: boolean) {
+  const auth = await requirePermission("activity:view");
+  if (auth.error || !auth.supabase) return;
+
+  await auth.supabase.from("user_activity_events").insert({
+    actor_id: actorId,
+    event_type: "Lead converted to borrower",
+    entity_table: "leads",
+    entity_id: leadId,
+    metadata: { borrower_id: borrowerId, borrower_created: created }
+  });
+
+  await auth.supabase.from("communication_history").insert({
+    owner_id: actorId,
+    lead_id: leadId,
+    borrower_id: borrowerId,
+    channel: "system_update",
+    direction: "system",
+    subject: "Lead converted to borrower",
+    summary: "Lead converted to borrower",
+    occurred_at: new Date().toISOString()
+  });
 }
 
 export async function deleteLead(leadId: string) {

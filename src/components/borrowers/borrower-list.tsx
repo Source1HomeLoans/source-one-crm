@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { borrowers } from "@/lib/data/borrowers";
 
-export function BorrowerList() {
+export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrowers?: typeof borrowers }) {
   return (
     <div className="space-y-5">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -39,7 +39,7 @@ export function BorrowerList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {borrowers.map((borrower) => (
+                {initialBorrowers.map((borrower) => (
                   <tr key={borrower.id} className="hover:bg-slate-50">
                     <td className="px-3 py-4 font-semibold text-brand-ink">
                       {borrower.firstName} {borrower.lastName}
