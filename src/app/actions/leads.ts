@@ -225,13 +225,12 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
     return { ...success("Lead linked to existing borrower."), borrowerId: existingBorrowerId, created: false };
   }
 
-  const { data: borrowerByLead } = await auth.supabase.from("borrowers").select("id").eq("source_lead_id", leadId).maybeSingle();
-  const linkedBorrowerId = (borrowerByLead as { id?: string } | null)?.id;
+  const matchedBorrowerId = await findExistingBorrowerForLead(leadRow);
 
-  if (linkedBorrowerId) {
-    await auth.supabase.from("leads").update({ status: "in_process", borrower_id: linkedBorrowerId }).eq("id", leadId);
-    await writeLeadConversionActivity(leadId, linkedBorrowerId, auth.profile.id, false);
-    return { ...success("Lead linked to existing borrower."), borrowerId: linkedBorrowerId, created: false };
+  if (matchedBorrowerId) {
+    await auth.supabase.from("leads").update({ status: "in_process", borrower_id: matchedBorrowerId }).eq("id", leadId);
+    await writeLeadConversionActivity(leadId, matchedBorrowerId, auth.profile.id, false);
+    return { ...success("Lead linked to existing borrower."), borrowerId: matchedBorrowerId, created: false };
   }
 
   const { data: borrower, error: borrowerError } = await auth.supabase
@@ -247,11 +246,7 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
       sms_consent: Boolean(leadRow.sms_consent),
       email_consent: Boolean(leadRow.email_consent),
       consent_collected_at: leadRow.consent_collected_at,
-      consent_source: leadRow.consent_source,
-      source_lead_id: leadId,
-      loan_purpose: leadRow.loan_purpose,
-      estimated_loan_amount: leadRow.estimated_loan_amount,
-      property_state: leadRow.property_state
+      consent_source: leadRow.consent_source
     })
     .select("id")
     .single();
@@ -267,6 +262,29 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
   await writeLeadConversionActivity(leadId, borrowerId, auth.profile.id, true);
 
   return { ...success("Lead moved to In Process and borrower profile created."), borrowerId, created: true };
+}
+
+async function findExistingBorrowerForLead(leadRow: Record<string, string | number | boolean | null>) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase) return null;
+
+  const ownerId = typeof leadRow.owner_id === "string" ? leadRow.owner_id : null;
+  const email = typeof leadRow.email === "string" && leadRow.email.trim() ? leadRow.email.trim() : null;
+  const phone = typeof leadRow.phone === "string" && leadRow.phone.trim() ? leadRow.phone.trim() : null;
+
+  if (ownerId && email) {
+    const { data } = await auth.supabase.from("borrowers").select("id").eq("owner_id", ownerId).ilike("email", email).maybeSingle();
+    const borrowerId = (data as { id?: string } | null)?.id;
+    if (borrowerId) return borrowerId;
+  }
+
+  if (ownerId && phone) {
+    const { data } = await auth.supabase.from("borrowers").select("id").eq("owner_id", ownerId).eq("phone", phone).maybeSingle();
+    const borrowerId = (data as { id?: string } | null)?.id;
+    if (borrowerId) return borrowerId;
+  }
+
+  return null;
 }
 
 async function writeLeadConversionActivity(leadId: string, borrowerId: string, actorId: string, created: boolean) {
