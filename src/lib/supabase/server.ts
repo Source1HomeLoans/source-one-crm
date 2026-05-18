@@ -20,11 +20,18 @@ export function createActionClient() {
   return createServerActionClient({ cookies });
 }
 
-export async function getCurrentProfile(): Promise<UserProfile | null> {
+export async function getCurrentSession() {
   const supabase = createServerClient();
   const {
     data: { session }
   } = await supabase.auth.getSession();
+
+  return session;
+}
+
+export async function getCurrentProfile(): Promise<UserProfile | null> {
+  const supabase = createServerClient();
+  const session = await getCurrentSession();
 
   if (!session) {
     return null;

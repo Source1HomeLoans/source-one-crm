@@ -6,11 +6,20 @@ import { KeyRound, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
-export function LoginForm() {
+const authErrorMessages: Record<string, string> = {
+  profile_missing: "Your login worked, but no CRM profile exists for this user yet. Ask an admin to create your profile row in Supabase with the correct role.",
+  missing_auth_code: "The auth callback did not include a confirmation code. Try the email link again or request a new link."
+};
+
+type LoginFormProps = {
+  initialError?: string;
+};
+
+export function LoginForm({ initialError }: LoginFormProps) {
   const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError ? authErrorMessages[initialError] ?? initialError : null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,14 +29,27 @@ export function LoginForm() {
     setError(null);
     setMessage(null);
 
+    if (!email.trim()) {
+      setError("Enter your email address.");
+      setLoading(false);
+      return;
+    }
+
+    if (mode !== "reset" && !password) {
+      setError("Enter your password.");
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/dashboard`;
-    const { error: authError } =
+    const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard`;
+    const result =
       mode === "signin"
-        ? await supabase.auth.signInWithPassword({ email, password })
+        ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
         : mode === "signup"
-          ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } })
-          : await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+          ? await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: redirectTo } })
+          : await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    const { error: authError } = result;
 
     if (authError) {
       setError(authError.message);
@@ -36,7 +58,7 @@ export function LoginForm() {
     }
 
     if (mode === "signup") {
-      setMessage("Signup submitted. Check email confirmation settings in Supabase before inviting production users.");
+      setMessage("Signup submitted. Check your email to confirm the account, then sign in. An admin must also create your CRM profile and role.");
       setLoading(false);
       return;
     }
@@ -47,7 +69,17 @@ export function LoginForm() {
       return;
     }
 
-    window.location.href = "/dashboard";
+    const {
+      data: { session }
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      setError("Login completed, but the browser did not receive a session. Check Supabase Auth URL settings and cookies, then try again.");
+      setLoading(false);
+      return;
+    }
+
+    window.location.assign("/dashboard");
   }
 
   return (
@@ -99,8 +131,9 @@ export function LoginForm() {
         <input
           id="password"
           type="password"
-          autoComplete="current-password"
+          autoComplete={mode === "signup" ? "new-password" : "current-password"}
           required
+          minLength={6}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"

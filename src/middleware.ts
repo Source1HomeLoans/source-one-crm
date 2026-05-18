@@ -16,14 +16,22 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getSession();
 
   const isLogin = request.nextUrl.pathname.startsWith("/login");
-  const isPublicRoute = isLogin || request.nextUrl.pathname === "/" || request.nextUrl.pathname.startsWith("/privacy") || request.nextUrl.pathname.startsWith("/terms");
+  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
+  const hasLoginError = Boolean(request.nextUrl.searchParams.get("auth_error"));
+  const isPublicRoute = isLogin || isAuthCallback || request.nextUrl.pathname === "/" || request.nextUrl.pathname.startsWith("/privacy") || request.nextUrl.pathname.startsWith("/terms");
   const isCrmRoute = !isPublicRoute;
 
   if (!session && isCrmRoute) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (session && isLogin) {
+  if (session && isLogin && !hasLoginError) {
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
+
+    if (!profile?.role) {
+      return NextResponse.redirect(new URL("/login?auth_error=profile_missing", request.url));
+    }
+
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -31,7 +39,11 @@ export async function middleware(request: NextRequest) {
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
     const role = profile?.role as AppRole | undefined;
 
-    if (!role || !canAccessRoute(role, request.nextUrl.pathname)) {
+    if (!role) {
+      return NextResponse.redirect(new URL("/login?auth_error=profile_missing", request.url));
+    }
+
+    if (!canAccessRoute(role, request.nextUrl.pathname)) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }

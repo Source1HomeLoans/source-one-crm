@@ -1,7 +1,9 @@
 import { LoginForm } from "@/components/auth/login-form";
 import Link from "next/link";
 
-export default function LoginPage() {
+export const dynamic = "force-dynamic";
+
+export default function LoginPage({ searchParams }: { searchParams?: { auth_error?: string } }) {
   return (
     <main className="grid min-h-screen bg-slate-50 lg:grid-cols-[1.05fr_0.95fr]">
       <section className="flex items-center justify-center px-5 py-10">
@@ -11,7 +13,7 @@ export default function LoginPage() {
             <h1 className="mt-2 text-2xl font-semibold text-brand-ink">Sign in to Mortgage CRM</h1>
             <p className="mt-2 text-sm text-slate-600">Secure access for lead follow-up, loan pipeline work, and partner tracking.</p>
           </div>
-          <LoginForm />
+          <LoginForm initialError={searchParams?.auth_error} />
           <div className="mt-5 flex gap-4 text-xs text-slate-500">
             <Link href="/privacy" className="hover:text-brand-blue">
               Privacy Notice

@@ -23,6 +23,14 @@ The initial production schema is in:
 supabase/migrations/001_initial_mortgage_crm.sql
 ```
 
+Then apply:
+
+```text
+supabase/migrations/002_auth_profile_trigger.sql
+```
+
+The second migration creates CRM `profiles` automatically for new Supabase Auth users and backfills any existing Auth users without a profile. New users default to the `loan_officer` role until an admin changes the role.
+
 It includes:
 
 - `profiles` linked to `auth.users`
