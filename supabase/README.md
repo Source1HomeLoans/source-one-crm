@@ -27,9 +27,10 @@ Then apply:
 
 ```text
 supabase/migrations/002_auth_profile_trigger.sql
+supabase/migrations/003_owner_admin_profile_trigger.sql
 ```
 
-The second migration creates CRM `profiles` automatically for new Supabase Auth users and backfills any existing Auth users without a profile. New users default to the `loan_officer` role until an admin changes the role.
+These migrations create CRM `profiles` automatically for new Supabase Auth users and backfill any existing Auth users without a profile. New users default to the `loan_officer` role. The owner email `source1homeloans@gmail.com` is assigned the `admin` role automatically.
 
 It includes:
 
@@ -104,8 +105,9 @@ Do not mark this bucket public. Use signed URLs or server actions for download w
 
 ## 6. Create Production Users
 
-1. Create users in Supabase Auth.
-2. Insert a matching `profiles` row for every user:
+1. Create users in Supabase Auth or let users sign up from the CRM.
+2. The `on_auth_user_created` trigger creates matching `profiles` rows automatically.
+3. To manually repair or create a profile, use the user's real Auth UUID:
 
 ```sql
 insert into public.profiles (id, full_name, email, role, nmls_id, phone)
@@ -125,6 +127,14 @@ Allowed roles:
 - `loan_officer`
 - `processor`
 - `marketing_assistant`
+
+To promote a user safely, edit and run:
+
+```text
+supabase/admin_promote_user.sql
+```
+
+The default target email in that script is `source1homeloans@gmail.com`.
 
 ## 7. Required Supabase Environment Variables
 

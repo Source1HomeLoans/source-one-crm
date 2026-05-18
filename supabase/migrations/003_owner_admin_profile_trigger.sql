@@ -15,7 +15,15 @@ begin
       else 'loan_officer'::public.app_role
     end
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update
+  set
+    email = excluded.email,
+    full_name = coalesce(public.profiles.full_name, excluded.full_name),
+    role = case
+      when lower(excluded.email) = 'source1homeloans@gmail.com' then 'admin'::public.app_role
+      else public.profiles.role
+    end,
+    updated_at = now();
 
   return new;
 end;
@@ -37,12 +45,16 @@ select
     else 'loan_officer'::public.app_role
   end
 from auth.users
-where not exists (
-  select 1
-  from public.profiles profiles
-  where profiles.id = users.id
-);
+on conflict (id) do update
+set
+  email = excluded.email,
+  full_name = coalesce(public.profiles.full_name, excluded.full_name),
+  role = case
+    when lower(excluded.email) = 'source1homeloans@gmail.com' then 'admin'::public.app_role
+    else public.profiles.role
+  end,
+  updated_at = now();
 
 update public.profiles
-set role = 'admin'::public.app_role
+set role = 'admin'::public.app_role, updated_at = now()
 where lower(email) = 'source1homeloans@gmail.com';
