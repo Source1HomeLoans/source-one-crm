@@ -29,6 +29,15 @@ const loanPurposeMap: Record<string, (typeof loanPurposes)[number]> = {
   "No Doc": "no_doc"
 };
 
+const loanProgramMap: Record<string, string> = {
+  purchase: "conventional",
+  refinance: "conventional",
+  dscr: "dscr",
+  bank_statement: "bank_statement",
+  p_and_l: "p_and_l",
+  no_doc: "no_doc"
+};
+
 const creditRangeMap: Record<string, (typeof creditRanges)[number]> = {
   "Below 580": "below_580",
   "580-619": "580_619",
@@ -149,11 +158,26 @@ export async function updateLead(leadId: string, formData: FormData) {
   const auth = await requirePermission("leads:manage");
   if (auth.error || !auth.supabase || !auth.profile) return auth.error;
 
+  const { data: beforeLead } = await auth.supabase.from("leads").select("status, borrower_id").eq("id", leadId).single();
+  const previousStatus = (beforeLead as { status?: string } | null)?.status;
   const { fieldErrors, payload } = leadPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the lead form fields.", fieldErrors);
 
   const { error } = await auth.supabase.from("leads").update(payload).eq("id", leadId);
   if (error) return failure(error.message);
+
+  if (previousStatus && previousStatus !== payload.status) {
+    await auth.supabase.from("communication_history").insert({
+      owner_id: auth.profile.id,
+      lead_id: leadId,
+      borrower_id: (beforeLead as { borrower_id?: string | null } | null)?.borrower_id ?? null,
+      channel: "system_update",
+      direction: "system",
+      subject: "Linked status changed",
+      summary: `Lead status changed from ${previousStatus} to ${payload.status}`,
+      occurred_at: new Date().toISOString()
+    });
+  }
 
   let conversion: { borrowerId?: string; created: boolean } | null = null;
   if (payload.status === "in_process") {
@@ -246,7 +270,14 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
       sms_consent: Boolean(leadRow.sms_consent),
       email_consent: Boolean(leadRow.email_consent),
       consent_collected_at: leadRow.consent_collected_at,
-      consent_source: leadRow.consent_source
+      consent_source: leadRow.consent_source,
+      source_lead_id: leadId,
+      loan_purpose: leadRow.loan_purpose,
+      loan_program: loanProgramMap[String(leadRow.loan_purpose)] ?? "conventional",
+      estimated_loan_amount: leadRow.estimated_loan_amount,
+      property_state: leadRow.property_state,
+      borrower_status: "file_started",
+      notes: "Created from lead conversion."
     })
     .select("id")
     .single();

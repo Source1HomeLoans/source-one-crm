@@ -64,7 +64,7 @@ type LeadRow = Record<string, string | number | null>;
 type ActivityRow = Record<string, string | null>;
 
 export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams?: { conversion_error?: string } }) {
-  const { lead, activities } = await loadLeadDetail(params.leadId);
+  const { lead, activities, linkedBorrowerStatus } = await loadLeadDetail(params.leadId);
 
   if (!lead) {
     return <LeadNotFound />;
@@ -90,6 +90,14 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           {searchParams.conversion_error}
         </div>
       ) : null}
+
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3 p-4">
+          <span className="text-sm font-semibold text-brand-ink">Linked statuses</span>
+          <Badge tone="blue">Lead: {lead.status}</Badge>
+          <Badge tone="green">Borrower: {linkedBorrowerStatus ?? "No linked borrower"}</Badge>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
         <div>
@@ -165,13 +173,14 @@ async function loadLeadDetail(leadId: string) {
     const lead = getLeadById(leadId);
     return {
       lead,
-      activities: getActivitiesForContact(leadId)
+      activities: getActivitiesForContact(leadId),
+      linkedBorrowerStatus: null
     };
   }
 
   const profile = await getCurrentProfile();
   if (!profile) {
-    return { lead: null, activities: [] };
+    return { lead: null, activities: [], linkedBorrowerStatus: null };
   }
 
   const supabase = createServerClient();
@@ -182,10 +191,16 @@ async function loadLeadDetail(leadId: string) {
     .maybeSingle();
 
   if (!data) {
-    return { lead: null, activities: [] };
+    return { lead: null, activities: [], linkedBorrowerStatus: null };
   }
 
   const lead = mapLead(data as LeadRow, profile.full_name);
+  const row = data as LeadRow;
+  let linkedBorrowerStatus: string | null = null;
+  if (typeof row.borrower_id === "string") {
+    const { data: borrower } = await supabase.from("borrowers").select("borrower_status").eq("id", row.borrower_id).maybeSingle();
+    linkedBorrowerStatus = statusLabel(String((borrower as { borrower_status?: string } | null)?.borrower_status ?? ""));
+  }
   const { data: activityRows } = await supabase
     .from("communication_history")
     .select("id, channel, summary, subject, direction, occurred_at, created_at")
@@ -194,7 +209,8 @@ async function loadLeadDetail(leadId: string) {
 
   return {
     lead,
-    activities: (activityRows ?? []).map((activity) => mapActivity(activity as ActivityRow, lead))
+    activities: (activityRows ?? []).map((activity) => mapActivity(activity as ActivityRow, lead)),
+    linkedBorrowerStatus
   };
 }
 
@@ -231,6 +247,10 @@ function mapActivity(row: ActivityRow, lead: Lead): Activity {
     createdBy: row.direction === "system" ? "System" : lead.assignedLoanOfficer,
     timestamp: String(row.occurred_at ?? row.created_at ?? "").replace("T", " ").slice(0, 16)
   };
+}
+
+function statusLabel(status: string) {
+  return status ? status.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : null;
 }
 
 function LeadNotFound() {

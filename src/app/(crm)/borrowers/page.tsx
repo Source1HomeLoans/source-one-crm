@@ -7,12 +7,17 @@ import { createServerClient, getCurrentProfile } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 const loanProgramLabels: Record<string, LoanProgram> = {
+  conventional: "Conventional",
+  fha: "FHA",
+  va: "VA",
   purchase: "Conventional",
   refinance: "Conventional",
   dscr: "DSCR",
   bank_statement: "Bank Statement",
   p_and_l: "P&L",
-  no_doc: "No Doc"
+  no_doc: "No Doc",
+  non_qm: "Non-QM",
+  hard_money: "Hard Money"
 };
 
 export default async function BorrowersPage() {
@@ -21,7 +26,7 @@ export default async function BorrowersPage() {
   const { data } = supabase && profile ? await borrowersQueryForRole(supabase, profile) : { data: null };
   const liveBorrowers = data?.map((borrower): BorrowerProfile => {
     const row = borrower as Record<string, string | number | boolean | null>;
-    const loanProgram = loanProgramLabels[String(row.loan_purpose)] ?? "Conventional";
+    const loanProgram = loanProgramLabels[String(row.loan_program ?? row.loan_purpose)] ?? "Conventional";
 
     return {
       id: String(row.id),
@@ -34,7 +39,7 @@ export default async function BorrowersPage() {
       consentToContact: Boolean(row.consent_to_contact),
       assignedLoanOfficer: row.owner_id === profile?.id ? profile.full_name : "Assigned user",
       loanScenario: {
-        purpose: String(row.loan_purpose ?? "purchase"),
+        purpose: loanProgram,
         loanAmount: Number(row.estimated_loan_amount ?? 0),
         purchasePrice: Number(row.estimated_loan_amount ?? 0),
         downPayment: 0,
@@ -64,7 +69,7 @@ export default async function BorrowersPage() {
       loanProgram: {
         selected: loanProgram,
         eligiblePrograms: [loanProgram],
-        notes: "Created from lead conversion."
+        notes: String(row.notes ?? "Created from lead conversion.")
       },
       documents: [],
       notes: [],
