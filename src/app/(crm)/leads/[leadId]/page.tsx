@@ -10,6 +10,8 @@ import { getActivitiesForContact } from "@/lib/data/activity";
 import { getLeadById, type LeadStatus } from "@/lib/data/leads";
 import { currency } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 const statusTones: Record<LeadStatus, "blue" | "green" | "gold" | "red" | "slate"> = {
   New: "blue",
   Contacted: "slate",

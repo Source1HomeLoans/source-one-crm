@@ -1,6 +1,8 @@
 import { ActivityLog } from "@/components/activity/activity-log";
 import { activities } from "@/lib/data/activity";
 
+export const dynamic = "force-dynamic";
+
 export default function ActivityPage() {
   return (
     <div className="space-y-5">

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { exportJobs } from "@/lib/data/compliance";
 
+export const dynamic = "force-dynamic";
+
 export default function ExportPage() {
   return (
     <div className="space-y-5">

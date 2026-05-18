@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { PartnerProfile } from "@/components/partners/partner-profile";
 import { getPartnerById } from "@/lib/data/partners";
 
+export const dynamic = "force-dynamic";
+
 export default function PartnerDetailPage({ params }: { params: { partnerId: string } }) {
   const partner = getPartnerById(params.partnerId);
 

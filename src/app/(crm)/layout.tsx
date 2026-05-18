@@ -5,6 +5,8 @@ import { demoProfile } from "@/lib/data/mock-crm";
 import { hasSupabaseConfig } from "@/lib/env";
 import { getCurrentProfile } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
   const supabaseConfigured = hasSupabaseConfig();
   const profile = supabaseConfigured ? await getCurrentProfile() : null;

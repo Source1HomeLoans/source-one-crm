@@ -9,6 +9,8 @@ import { pipelineLoans } from "@/lib/data/pipeline";
 import { isDueToday, tasks } from "@/lib/data/tasks";
 import { currency } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export default function DashboardPage() {
   const newLeadsThisMonth = leads.filter((lead) => lead.createdDate.startsWith("2026-05")).length;
   const loansInPipeline = pipelineLoans.filter((loan) => !["Funded", "Lost"].includes(loan.status)).length;

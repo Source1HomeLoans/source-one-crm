@@ -1,6 +1,8 @@
 import { ModulePage } from "@/components/ui/module-page";
 import { auditTrailRows, userActivityRows } from "@/lib/data/compliance";
 
+export const dynamic = "force-dynamic";
+
 export default function AuditLogsPage() {
   return (
     <div className="space-y-5">

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ModulePage } from "@/components/ui/module-page";
 
+export const dynamic = "force-dynamic";
+
 export default function FilesPage() {
   return (
     <div className="space-y-5">

@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { BorrowerProfile } from "@/components/borrowers/borrower-profile";
 import { getBorrowerById } from "@/lib/data/borrowers";
 
+export const dynamic = "force-dynamic";
+
 export default function BorrowerProfilePage({ params }: { params: { borrowerId: string } }) {
   const borrower = getBorrowerById(params.borrowerId);
 

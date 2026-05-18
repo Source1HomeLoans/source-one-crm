@@ -1,5 +1,7 @@
 import { ModulePage } from "@/components/ui/module-page";
 
+export const dynamic = "force-dynamic";
+
 export default function NotesPage() {
   return (
     <ModulePage
