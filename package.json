@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (Test-Path .next) { Remove-Item .next -Recurse -Force }\"",
+    "predev": "node scripts/clean-next.mjs",
     "dev": "next dev",
-    "prebuild": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (Test-Path .next) { Remove-Item .next -Recurse -Force }\"",
+    "prebuild": "node scripts/clean-next.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

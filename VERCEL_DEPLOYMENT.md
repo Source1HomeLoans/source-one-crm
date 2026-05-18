@@ -24,12 +24,12 @@ Then import that GitHub repository in Vercel.
 Use these settings:
 
 - Framework preset: Next.js
-- Install command: `npm.cmd install`
-- Build command: `npm.cmd run build`
+- Install command: `npm install`
+- Build command: `npm run build`
 - Output directory: `.next`
 - Node.js version: 20.x or 22.x
 
-The local Windows environment should use `npm.cmd` because PowerShell blocks `npm.ps1`.
+The local Windows environment should use `npm.cmd` because PowerShell blocks `npm.ps1`. Vercel runs on Linux, so Vercel project settings must use `npm install` and `npm run build`.
 
 ## 3. Environment Variables
 
