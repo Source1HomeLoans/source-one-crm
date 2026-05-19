@@ -6,7 +6,6 @@ import { Eye, Plus } from "lucide-react";
 
 import { ArchiveDeleteActions } from "@/components/records/archive-delete-actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { borrowers } from "@/lib/data/borrowers";
 
@@ -25,18 +24,21 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
   );
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
+    <div className="max-w-full space-y-5 overflow-x-hidden">
+      <div className="flex min-w-0 flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div className="min-w-0">
           <h2 className="text-2xl font-semibold text-brand-ink">Borrowers</h2>
-          <p className="mt-1 max-w-3xl text-sm text-slate-600">
+          <p className="mt-1 max-w-3xl break-words text-sm text-slate-600">
             Review borrower profiles, loan scenarios, documents, tasks, notes, and communication history.
           </p>
         </div>
-        <Button>
+        <Link
+          href="/borrowers/new"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-brand-navy px-3 text-sm font-semibold text-white transition hover:bg-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2"
+        >
           <Plus size={17} />
           New Borrower
-        </Button>
+        </Link>
       </div>
 
       <Card>
@@ -56,7 +58,7 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
           </select>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="max-w-full overflow-x-auto">
             <table className="w-full min-w-[860px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">

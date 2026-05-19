@@ -1,5 +1,5 @@
 export type PartnerStatus = "Prospect" | "Active" | "VIP" | "Inactive";
-export type PartnerType = "Realtor" | "Builder" | "CPA" | "Attorney" | "Investor";
+export type PartnerType = "Realtor" | "Builder" | "CPA" | "Attorney" | "Investor" | "Financial Advisor" | "Past Client" | "Other";
 
 export type ReferralRecord = {
   id: string;

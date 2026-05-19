@@ -53,11 +53,11 @@ export async function createPartner(formData: FormData) {
   const { fieldErrors, payload } = partnerPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the partner form fields.", fieldErrors);
 
-  const { error } = await auth.supabase.from("referral_partners").insert(payload);
+  const { data, error } = await auth.supabase.from("referral_partners").insert(payload).select("id").single();
   if (error) return failure(error.message);
 
   revalidatePath("/partners");
-  return success("Referral partner created.");
+  return { ...success("Referral partner created."), id: (data as { id?: string } | null)?.id };
 }
 
 export async function updatePartner(partnerId: string, formData: FormData) {

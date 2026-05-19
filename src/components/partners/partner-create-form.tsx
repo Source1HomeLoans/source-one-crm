@@ -4,45 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 
-import { updateBorrower } from "@/app/actions/borrowers";
+import { createPartner } from "@/app/actions/partners";
 import { Button } from "@/components/ui/button";
-import type { BorrowerProfile } from "@/lib/data/borrowers";
 
-const loanPrograms = [
-  ["conventional", "Conventional"],
-  ["fha", "FHA"],
-  ["va", "VA"],
-  ["dscr", "DSCR"],
-  ["bank_statement", "Bank Statement"],
-  ["p_and_l", "P&L"],
-  ["no_doc", "No Doc"],
-  ["non_qm", "Non-QM"],
-  ["hard_money", "Hard Money"]
+const partnerTypes = [
+  ["realtor", "Realtor"],
+  ["builder", "Builder"],
+  ["cpa", "CPA"],
+  ["attorney", "Attorney"],
+  ["investor", "Investor"],
+  ["financial_advisor", "Financial Advisor"],
+  ["past_client", "Past Client"],
+  ["other", "Other"]
 ];
 
-const borrowerStatuses = [
-  ["file_started", "File Started"],
-  ["docs_needed", "Docs Needed"],
-  ["submitted", "Submitted"],
-  ["approved", "Approved"],
-  ["clear_to_close", "Clear to Close"],
-  ["funded", "Funded"],
+const partnerStatuses = [
+  ["prospect", "Prospect"],
+  ["active", "Active"],
+  ["vip", "VIP"],
   ["inactive", "Inactive"]
 ];
 
-const loanProgramValues: Record<string, string> = {
-  Conventional: "conventional",
-  FHA: "fha",
-  VA: "va",
-  DSCR: "dscr",
-  "Bank Statement": "bank_statement",
-  "P&L": "p_and_l",
-  "No Doc": "no_doc",
-  "Non-QM": "non_qm",
-  "Hard Money": "hard_money"
-};
-
-export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
+export function PartnerCreateForm() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
@@ -52,7 +35,7 @@ export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
     setSaving(true);
     setMessage(null);
 
-    const result = await updateBorrower(borrower.id, new FormData(event.currentTarget));
+    const result = await createPartner(new FormData(event.currentTarget));
     setSaving(false);
 
     if (!result.ok) {
@@ -62,20 +45,25 @@ export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
     }
 
     setMessage({ type: "success", text: result.message });
+    router.push("/partners");
     router.refresh();
   }
 
   return (
     <form onSubmit={handleSubmit} className="grid max-w-full gap-4 md:grid-cols-2">
-      <Field label="First name" name="first_name" defaultValue={borrower.firstName} required />
-      <Field label="Last name" name="last_name" defaultValue={borrower.lastName} required />
-      <Field label="Phone" name="phone" defaultValue={borrower.phone} />
-      <Field label="Email" name="email" type="email" defaultValue={borrower.email} />
-      <Select label="Loan program" name="loan_program" options={loanPrograms} defaultValue={loanProgramValues[borrower.loanProgram.selected] ?? "conventional"} />
-      <Field label="Loan amount" name="estimated_loan_amount" type="number" defaultValue={String(borrower.loanScenario.loanAmount || "")} />
-      <Field label="Property address" name="property_address" defaultValue={borrower.property.address === "TBD" ? "" : borrower.property.address} />
-      <Field label="State" name="property_state" defaultValue={borrower.state} maxLength={2} />
-      <Select label="Status" name="borrower_status" options={borrowerStatuses} defaultValue={(borrower as BorrowerProfile & { borrowerStatus?: string }).borrowerStatus ?? "file_started"} />
+      <Field label="Name" name="contact_name" required />
+      <Field label="Company" name="company_name" required />
+      <Field label="Phone" name="phone" />
+      <Field label="Email" name="email" type="email" />
+      <Select label="Partner type" name="partner_type" options={partnerTypes} defaultValue="realtor" />
+      <Field label="Market/city" name="market_city" />
+      <Select label="Status" name="status" options={partnerStatuses} defaultValue="prospect" />
+      <Field label="Referrals sent" name="referrals_sent" type="number" defaultValue="0" />
+      <Field label="Last contacted" name="last_touch_at" type="date" />
+      <Field label="Follow-up due" name="follow_up_due_at" type="date" />
+      <div className="md:col-span-2">
+        <Field label="Follow-up task" name="follow_up_task" />
+      </div>
       <div className="md:col-span-2">
         <label className="text-sm font-medium text-slate-700" htmlFor="notes">
           Notes
@@ -84,7 +72,6 @@ export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
           id="notes"
           name="notes"
           rows={5}
-          defaultValue={borrower.loanProgram.notes === "Created from lead conversion." ? "" : borrower.loanProgram.notes}
           className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
         />
       </div>
@@ -96,14 +83,14 @@ export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
       <div className="md:col-span-2">
         <Button type="submit" disabled={saving}>
           <Save size={17} />
-          {saving ? "Saving Borrower" : "Save Borrower"}
+          {saving ? "Saving Partner" : "Save Partner"}
         </Button>
       </div>
     </form>
   );
 }
 
-function Field({ label, name, defaultValue, type = "text", required, maxLength }: { label: string; name: string; defaultValue?: string; type?: string; required?: boolean; maxLength?: number }) {
+function Field({ label, name, type = "text", required, defaultValue }: { label: string; name: string; type?: string; required?: boolean; defaultValue?: string }) {
   return (
     <div className="min-w-0">
       <label className="text-sm font-medium text-slate-700" htmlFor={name}>
@@ -113,9 +100,8 @@ function Field({ label, name, defaultValue, type = "text", required, maxLength }
         id={name}
         name={name}
         type={type}
-        defaultValue={defaultValue}
         required={required}
-        maxLength={maxLength}
+        defaultValue={defaultValue}
         className="mt-2 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
       />
     </div>

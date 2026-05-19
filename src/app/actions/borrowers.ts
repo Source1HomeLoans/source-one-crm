@@ -63,11 +63,11 @@ export async function createBorrower(formData: FormData) {
   const { fieldErrors, payload } = borrowerPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the borrower form fields.", fieldErrors);
 
-  const { error } = await auth.supabase.from("borrowers").insert(payload);
+  const { data, error } = await auth.supabase.from("borrowers").insert(payload).select("id").single();
   if (error) return failure(error.message);
 
   revalidatePath("/borrowers");
-  return success("Borrower created.");
+  return { ...success("Borrower created."), id: (data as { id?: string } | null)?.id };
 }
 
 export async function updateBorrower(borrowerId: string, formData: FormData) {

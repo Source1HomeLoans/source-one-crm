@@ -56,11 +56,11 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
   const editingLead = initialLeads.find((lead) => lead.id === editingLeadId);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
+    <div className="max-w-full space-y-5 overflow-x-hidden">
+      <div className="flex min-w-0 flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div className="min-w-0">
           <h2 className="text-2xl font-semibold text-brand-ink">Leads</h2>
-          <p className="mt-1 max-w-3xl text-sm text-slate-600">
+          <p className="mt-1 max-w-3xl break-words text-sm text-slate-600">
             Manage mortgage lead intake, follow-up status, loan purpose, assignment, and notes from one mobile-friendly workspace.
           </p>
         </div>
@@ -118,7 +118,7 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
           <Badge tone="blue">{filteredLeads.length} results</Badge>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="max-w-full overflow-x-auto">
             <table className="w-full min-w-[1120px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
