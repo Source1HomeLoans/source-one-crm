@@ -63,6 +63,8 @@ const borrowerSchemaFallbackKeys = [
   "borrower_status"
 ];
 
+const leadSchemaFallbackKeys = ["property_address", "property_type"];
+
 const creditRangeMap: Record<string, (typeof creditRanges)[number]> = {
   "Below 580": "below_580",
   "580-619": "580_619",
@@ -152,7 +154,7 @@ export async function createLead(formData: FormData): Promise<LeadActionResult> 
   const { fieldErrors, payload, metadata } = leadPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the lead form fields.", fieldErrors);
 
-  const { data, error } = await auth.supabase.from("leads").insert(payload).select("id").single();
+  const { data, error } = await insertLeadWithSchemaFallback(payload);
   if (error) return failure(error.message);
 
   const leadId = data?.id as string | undefined;
@@ -190,7 +192,7 @@ export async function updateLead(leadId: string, formData: FormData) {
   const { fieldErrors, payload } = leadPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the lead form fields.", fieldErrors);
 
-  const { error } = await auth.supabase.from("leads").update(payload).eq("id", leadId);
+  const { error } = await updateLeadWithSchemaFallback(leadId, payload);
   if (error) return failure(error.message);
 
   if (previousStatus && previousStatus !== payload.status) {
@@ -310,6 +312,26 @@ async function loadLeadForBorrowerConversion(leadId: string) {
   return auth.supabase.from("leads").select(baselineColumns).eq("id", leadId).single();
 }
 
+async function insertLeadWithSchemaFallback(payload: Record<string, unknown>) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase) return { data: null, error: { message: auth.error.message } };
+
+  const result = await auth.supabase.from("leads").insert(payload).select("id").single();
+  if (!result.error || !isMissingOptionalColumnError(result.error.message, leadSchemaFallbackKeys)) return result;
+
+  return auth.supabase.from("leads").insert(stripOptionalColumns(payload, leadSchemaFallbackKeys)).select("id").single();
+}
+
+async function updateLeadWithSchemaFallback(leadId: string, payload: Record<string, unknown>) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase) return { error: { message: auth.error.message } };
+
+  const result = await auth.supabase.from("leads").update(payload).eq("id", leadId);
+  if (!result.error || !isMissingOptionalColumnError(result.error.message, leadSchemaFallbackKeys)) return result;
+
+  return auth.supabase.from("leads").update(stripOptionalColumns(payload, leadSchemaFallbackKeys)).eq("id", leadId);
+}
+
 async function findExistingBorrowerForLead(leadRow: Record<string, string | number | boolean | null>) {
   const auth = await requirePermission("borrowers:manage");
   if (auth.error || !auth.supabase) return null;
@@ -382,6 +404,15 @@ async function insertBorrowerWithSchemaFallback(payload: Record<string, unknown>
   const fallbackPayload = Object.fromEntries(Object.entries(payload).filter(([key]) => !borrowerSchemaFallbackKeys.includes(key)));
   const fallback = await auth.supabase.from("borrowers").insert(fallbackPayload).select("id").single();
   return { data: fallback.data, error: fallback.error?.message ?? null };
+}
+
+function stripOptionalColumns(payload: Record<string, unknown>, optionalKeys: string[]) {
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => !optionalKeys.includes(key)));
+}
+
+function isMissingOptionalColumnError(message: string, optionalKeys: string[]) {
+  const normalized = message.toLowerCase();
+  return optionalKeys.some((key) => normalized.includes(`'${key.toLowerCase()}'`) || normalized.includes(` ${key.toLowerCase()} `));
 }
 
 async function writeLeadConversionActivity(leadId: string, borrowerId: string, actorId: string, created: boolean) {

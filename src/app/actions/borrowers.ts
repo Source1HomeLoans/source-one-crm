@@ -7,6 +7,7 @@ import { checkbox, failure, formText, nullableNumber, nullableText, success, val
 
 const borrowerStatuses = ["file_started", "docs_needed", "submitted", "approved", "clear_to_close", "funded", "inactive"] as const;
 const loanPrograms = ["conventional", "fha", "va", "dscr", "bank_statement", "p_and_l", "no_doc", "non_qm", "hard_money"] as const;
+const borrowerSchemaFallbackKeys = ["loan_program", "estimated_loan_amount", "property_address", "property_state", "borrower_status", "notes"];
 
 function borrowerPayload(formData: FormData, ownerId: string) {
   const firstName = formText(formData, "first_name");
@@ -63,7 +64,7 @@ export async function createBorrower(formData: FormData) {
   const { fieldErrors, payload } = borrowerPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the borrower form fields.", fieldErrors);
 
-  const { data, error } = await auth.supabase.from("borrowers").insert(payload).select("id").single();
+  const { data, error } = await insertBorrowerWithSchemaFallback(payload);
   if (error) return failure(error.message);
 
   revalidatePath("/borrowers");
@@ -74,12 +75,12 @@ export async function updateBorrower(borrowerId: string, formData: FormData) {
   const auth = await requirePermission("borrowers:manage");
   if (auth.error || !auth.supabase || !auth.profile) return auth.error;
 
-  const { data: beforeBorrower } = await auth.supabase.from("borrowers").select("borrower_status, source_lead_id").eq("id", borrowerId).single();
+  const beforeBorrower = await loadBorrowerStatusContext(borrowerId);
   const previousStatus = (beforeBorrower as { borrower_status?: string } | null)?.borrower_status;
   const { fieldErrors, payload } = borrowerPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the borrower form fields.", fieldErrors);
 
-  const { error } = await auth.supabase.from("borrowers").update(payload).eq("id", borrowerId);
+  const { error } = await updateBorrowerWithSchemaFallback(borrowerId, payload);
   if (error) return failure(error.message);
 
   if (previousStatus && previousStatus !== payload.borrower_status) {
@@ -99,6 +100,46 @@ export async function updateBorrower(borrowerId: string, formData: FormData) {
   revalidatePath(`/borrowers/${borrowerId}`);
   revalidatePath(`/borrowers/${borrowerId}/edit`);
   return success("Borrower updated.");
+}
+
+async function loadBorrowerStatusContext(borrowerId: string) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase) return null;
+
+  const rich = await auth.supabase.from("borrowers").select("borrower_status, source_lead_id").eq("id", borrowerId).single();
+  if (!rich.error) return rich.data;
+
+  const baseline = await auth.supabase.from("borrowers").select("id").eq("id", borrowerId).single();
+  return baseline.data;
+}
+
+async function insertBorrowerWithSchemaFallback(payload: Record<string, unknown>) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase) return { data: null, error: { message: auth.error.message } };
+
+  const result = await auth.supabase.from("borrowers").insert(payload).select("id").single();
+  if (!result.error || !isMissingOptionalColumnError(result.error.message, borrowerSchemaFallbackKeys)) return result;
+
+  return auth.supabase.from("borrowers").insert(stripOptionalColumns(payload, borrowerSchemaFallbackKeys)).select("id").single();
+}
+
+async function updateBorrowerWithSchemaFallback(borrowerId: string, payload: Record<string, unknown>) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase) return { error: { message: auth.error.message } };
+
+  const result = await auth.supabase.from("borrowers").update(payload).eq("id", borrowerId);
+  if (!result.error || !isMissingOptionalColumnError(result.error.message, borrowerSchemaFallbackKeys)) return result;
+
+  return auth.supabase.from("borrowers").update(stripOptionalColumns(payload, borrowerSchemaFallbackKeys)).eq("id", borrowerId);
+}
+
+function stripOptionalColumns(payload: Record<string, unknown>, optionalKeys: string[]) {
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => !optionalKeys.includes(key)));
+}
+
+function isMissingOptionalColumnError(message: string, optionalKeys: string[]) {
+  const normalized = message.toLowerCase();
+  return optionalKeys.some((key) => normalized.includes(`'${key.toLowerCase()}'`) || normalized.includes(` ${key.toLowerCase()} `));
 }
 
 export async function archiveBorrower(borrowerId: string) {
