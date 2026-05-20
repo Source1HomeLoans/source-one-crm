@@ -21,10 +21,10 @@ export default async function DashboardPage() {
   }
 
   const newLeadsThisMonth = leads.filter((lead) => lead.createdDate.startsWith("2026-05")).length;
-  const loansInPipeline = pipelineLoans.filter((loan) => !["Funded", "Lost"].includes(loan.status)).length;
+  const loansInPipeline = pipelineLoans.filter((loan) => !["Funded", "Lost / Withdrawn"].includes(loan.status)).length;
   const fundedLoansThisMonth = pipelineLoans.filter((loan) => loan.status === "Funded").length;
   const estimatedLoanVolume = pipelineLoans
-    .filter((loan) => loan.status !== "Lost")
+    .filter((loan) => loan.status !== "Lost / Withdrawn")
     .reduce((total, loan) => total + loan.loanAmount, 0);
   const tasksDueToday = tasks.filter(isDueToday).length;
   const overdueFollowUps = tasks.filter((task) => task.status === "Overdue").length;
