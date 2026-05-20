@@ -63,6 +63,7 @@ export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
 
     setMessage({ type: "success", text: result.message });
     router.refresh();
+    router.push(`/borrowers/${borrower.id}`);
   }
 
   return (
@@ -73,6 +74,7 @@ export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
       <Field label="Email" name="email" type="email" defaultValue={borrower.email} />
       <Select label="Loan program" name="loan_program" options={loanPrograms} defaultValue={loanProgramValues[borrower.loanProgram.selected] ?? "conventional"} />
       <Field label="Loan amount" name="estimated_loan_amount" type="number" defaultValue={String(borrower.loanScenario.loanAmount || "")} />
+      <Field label="Credit score" name="credit_score" type="number" defaultValue={String(borrower.credit.estimatedScore || "")} />
       <Field label="Property address" name="property_address" defaultValue={borrower.property.address === "TBD" ? "" : borrower.property.address} />
       <Field label="State" name="property_state" defaultValue={borrower.state} maxLength={2} />
       <Select label="Status" name="borrower_status" options={borrowerStatuses} defaultValue={(borrower as BorrowerProfile & { borrowerStatus?: string }).borrowerStatus ?? "file_started"} />

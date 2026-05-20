@@ -7,7 +7,6 @@ import { checkbox, failure, formText, nullableNumber, nullableText, success, val
 
 const borrowerStatuses = ["file_started", "docs_needed", "submitted", "approved", "clear_to_close", "funded", "inactive"] as const;
 const loanPrograms = ["conventional", "fha", "va", "dscr", "bank_statement", "p_and_l", "no_doc", "non_qm", "hard_money"] as const;
-const borrowerSchemaFallbackKeys = ["loan_program", "estimated_loan_amount", "property_address", "property_state", "borrower_status", "notes"];
 
 function borrowerPayload(formData: FormData, ownerId: string) {
   const firstName = formText(formData, "first_name");
@@ -64,11 +63,15 @@ export async function createBorrower(formData: FormData) {
   const { fieldErrors, payload } = borrowerPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the borrower form fields.", fieldErrors);
 
-  const { data, error } = await insertBorrowerWithSchemaFallback(payload);
+  const { data, error } = await auth.supabase.from("borrowers").insert(payload).select("id").single();
   if (error) return failure(error.message);
 
+  const borrowerId = (data as { id?: string } | null)?.id;
+  if (!borrowerId) return failure("Borrower was saved but Supabase did not return a borrower ID.");
+
+  await writeBorrowerActivity(borrowerId, auth.profile.id, "Borrower created");
   revalidatePath("/borrowers");
-  return { ...success("Borrower created."), id: (data as { id?: string } | null)?.id };
+  return { ...success("Borrower created."), id: borrowerId };
 }
 
 export async function updateBorrower(borrowerId: string, formData: FormData) {
@@ -80,8 +83,12 @@ export async function updateBorrower(borrowerId: string, formData: FormData) {
   const { fieldErrors, payload } = borrowerPayload(formData, auth.profile.id);
   if (Object.keys(fieldErrors).length) return failure("Please fix the borrower form fields.", fieldErrors);
 
-  const { error } = await updateBorrowerWithSchemaFallback(borrowerId, payload);
+  const updatePayload = { ...payload };
+  delete (updatePayload as Record<string, unknown>).owner_id;
+
+  const { data: savedBorrower, error } = await auth.supabase.from("borrowers").update(updatePayload).eq("id", borrowerId).select("id").single();
   if (error) return failure(error.message);
+  if (!savedBorrower?.id) return failure("Borrower update was not confirmed by Supabase.");
 
   if (previousStatus && previousStatus !== payload.borrower_status) {
     await auth.supabase.from("communication_history").insert({
@@ -96,6 +103,7 @@ export async function updateBorrower(borrowerId: string, formData: FormData) {
     });
   }
 
+  await writeBorrowerActivity(borrowerId, auth.profile.id, "Borrower updated");
   revalidatePath("/borrowers");
   revalidatePath(`/borrowers/${borrowerId}`);
   revalidatePath(`/borrowers/${borrowerId}/edit`);
@@ -113,35 +121,6 @@ async function loadBorrowerStatusContext(borrowerId: string) {
   return baseline.data;
 }
 
-async function insertBorrowerWithSchemaFallback(payload: Record<string, unknown>) {
-  const auth = await requirePermission("borrowers:manage");
-  if (auth.error || !auth.supabase) return { data: null, error: { message: auth.error.message } };
-
-  const result = await auth.supabase.from("borrowers").insert(payload).select("id").single();
-  if (!result.error || !isMissingOptionalColumnError(result.error.message, borrowerSchemaFallbackKeys)) return result;
-
-  return auth.supabase.from("borrowers").insert(stripOptionalColumns(payload, borrowerSchemaFallbackKeys)).select("id").single();
-}
-
-async function updateBorrowerWithSchemaFallback(borrowerId: string, payload: Record<string, unknown>) {
-  const auth = await requirePermission("borrowers:manage");
-  if (auth.error || !auth.supabase) return { error: { message: auth.error.message } };
-
-  const result = await auth.supabase.from("borrowers").update(payload).eq("id", borrowerId);
-  if (!result.error || !isMissingOptionalColumnError(result.error.message, borrowerSchemaFallbackKeys)) return result;
-
-  return auth.supabase.from("borrowers").update(stripOptionalColumns(payload, borrowerSchemaFallbackKeys)).eq("id", borrowerId);
-}
-
-function stripOptionalColumns(payload: Record<string, unknown>, optionalKeys: string[]) {
-  return Object.fromEntries(Object.entries(payload).filter(([key]) => !optionalKeys.includes(key)));
-}
-
-function isMissingOptionalColumnError(message: string, optionalKeys: string[]) {
-  const normalized = message.toLowerCase();
-  return optionalKeys.some((key) => normalized.includes(`'${key.toLowerCase()}'`) || normalized.includes(` ${key.toLowerCase()} `));
-}
-
 export async function archiveBorrower(borrowerId: string) {
   const auth = await requirePermission("borrowers:manage");
   if (auth.error || !auth.supabase || !auth.profile) return auth.error;
@@ -153,6 +132,28 @@ export async function archiveBorrower(borrowerId: string) {
   revalidatePath("/borrowers");
   revalidatePath(`/borrowers/${borrowerId}`);
   return success("Borrower archived.");
+}
+
+async function writeBorrowerActivity(borrowerId: string, actorId: string, eventType: "Borrower created" | "Borrower updated") {
+  const auth = await requirePermission("activity:view");
+  if (auth.error || !auth.supabase) return;
+
+  await auth.supabase.from("user_activity_events").insert({
+    actor_id: actorId,
+    event_type: eventType,
+    entity_table: "borrowers",
+    entity_id: borrowerId
+  });
+
+  await auth.supabase.from("communication_history").insert({
+    owner_id: actorId,
+    borrower_id: borrowerId,
+    channel: "system_update",
+    direction: "system",
+    subject: eventType,
+    summary: eventType,
+    occurred_at: new Date().toISOString()
+  });
 }
 
 export async function deleteBorrower(borrowerId: string) {
