@@ -1,0 +1,14 @@
+alter table public.borrowers add column if not exists estimated_loan_amount numeric;
+alter table public.borrowers add column if not exists loan_program text;
+alter table public.borrowers add column if not exists loan_purpose text;
+alter table public.borrowers add column if not exists notes text;
+alter table public.borrowers add column if not exists property_address text;
+alter table public.borrowers add column if not exists property_state text;
+alter table public.borrowers add column if not exists property_type text;
+alter table public.borrowers add column if not exists credit_score_range text;
+alter table public.borrowers add column if not exists borrower_status text;
+alter table public.borrowers add column if not exists source_lead_id uuid references public.leads(id) on delete set null;
+alter table public.borrowers add column if not exists lead_source text;
+alter table public.borrowers add column if not exists archived_at timestamptz;
+alter table public.borrowers add column if not exists deleted_at timestamptz;
+notify pgrst, 'reload schema';

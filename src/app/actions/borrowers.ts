@@ -8,6 +8,32 @@ import { checkbox, failure, formText, nullableNumber, nullableText, success, val
 const borrowerStatuses = ["file_started", "docs_needed", "submitted", "approved", "clear_to_close", "funded", "inactive"] as const;
 const loanPrograms = ["conventional", "fha", "va", "dscr", "bank_statement", "p_and_l", "no_doc", "non_qm", "hard_money"] as const;
 
+const borrowerSaveColumns = new Set([
+  "owner_id",
+  "referral_partner_id",
+  "first_name",
+  "last_name",
+  "email",
+  "phone",
+  "credit_score",
+  "annual_income",
+  "loan_program",
+  "estimated_loan_amount",
+  "property_address",
+  "property_state",
+  "borrower_status",
+  "notes",
+  "consent_to_contact",
+  "sms_consent",
+  "email_consent",
+  "consent_collected_at",
+  "consent_source"
+]);
+
+function pickBorrowerSaveColumns(payload: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => borrowerSaveColumns.has(key)));
+}
+
 function borrowerPayload(formData: FormData, ownerId: string) {
   const firstName = formText(formData, "first_name");
   const lastName = formText(formData, "last_name");
@@ -30,29 +56,31 @@ function borrowerPayload(formData: FormData, ownerId: string) {
   if (!loanPrograms.includes(loanProgram as (typeof loanPrograms)[number])) fieldErrors.loan_program = "Choose a valid loan program.";
   if (!borrowerStatuses.includes(borrowerStatus as (typeof borrowerStatuses)[number])) fieldErrors.borrower_status = "Choose a valid borrower status.";
 
+  const rawPayload = {
+    owner_id: ownerId,
+    referral_partner_id: idOrNull(formData.get("referral_partner_id")),
+    first_name: firstName,
+    last_name: lastName,
+    email,
+    phone,
+    credit_score: creditScore,
+    annual_income: annualIncome,
+    loan_program: loanProgram,
+    estimated_loan_amount: loanAmount,
+    property_address: nullableText(formData, "property_address"),
+    property_state: nullableText(formData, "property_state"),
+    borrower_status: borrowerStatus,
+    notes: nullableText(formData, "notes"),
+    consent_to_contact: checkbox(formData, "consent_to_contact"),
+    sms_consent: checkbox(formData, "sms_consent"),
+    email_consent: checkbox(formData, "email_consent"),
+    consent_collected_at: checkbox(formData, "consent_to_contact") ? new Date().toISOString() : null,
+    consent_source: nullableText(formData, "consent_source") ?? "crm_form"
+  };
+
   return {
     fieldErrors,
-    payload: {
-      owner_id: ownerId,
-      referral_partner_id: idOrNull(formData.get("referral_partner_id")),
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      phone,
-      credit_score: creditScore,
-      annual_income: annualIncome,
-      loan_program: loanProgram,
-      estimated_loan_amount: loanAmount,
-      property_address: nullableText(formData, "property_address"),
-      property_state: nullableText(formData, "property_state"),
-      borrower_status: borrowerStatus,
-      notes: nullableText(formData, "notes"),
-      consent_to_contact: checkbox(formData, "consent_to_contact"),
-      sms_consent: checkbox(formData, "sms_consent"),
-      email_consent: checkbox(formData, "email_consent"),
-      consent_collected_at: checkbox(formData, "consent_to_contact") ? new Date().toISOString() : null,
-      consent_source: nullableText(formData, "consent_source") ?? "crm_form"
-    }
+    payload: pickBorrowerSaveColumns(rawPayload)
   };
 }
 
@@ -90,7 +118,8 @@ export async function updateBorrower(borrowerId: string, formData: FormData) {
   if (error) return failure(error.message);
   if (!savedBorrower?.id) return failure("Borrower update was not confirmed by Supabase.");
 
-  if (previousStatus && previousStatus !== payload.borrower_status) {
+  const nextStatus = String(payload.borrower_status ?? "");
+  if (previousStatus && previousStatus !== nextStatus) {
     await auth.supabase.from("communication_history").insert({
       owner_id: auth.profile.id,
       borrower_id: borrowerId,
@@ -98,7 +127,7 @@ export async function updateBorrower(borrowerId: string, formData: FormData) {
       channel: "system_update",
       direction: "system",
       subject: "Linked status changed",
-      summary: `Borrower status changed from ${previousStatus} to ${payload.borrower_status}`,
+      summary: `Borrower status changed from ${previousStatus} to ${nextStatus}`,
       occurred_at: new Date().toISOString()
     });
   }
