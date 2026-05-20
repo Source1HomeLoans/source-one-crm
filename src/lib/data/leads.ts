@@ -1,4 +1,4 @@
-export type LeadStatus = "New" | "Contacted" | "Prequalified" | "Application Sent" | "In Process" | "Closed" | "Lost";
+export type LeadStatus = "New" | "Contacted" | "Prequalified" | "Application Sent" | "In Process" | "Closed" | "Lost" | "DNC Hold";
 export type LeadLoanPurpose = "Purchase" | "Refinance" | "DSCR" | "Bank Statement" | "P/L" | "No Doc";
 
 export type Lead = {
@@ -14,15 +14,19 @@ export type Lead = {
   creditScoreRange: string;
   status: LeadStatus;
   assignedLoanOfficer: string;
+  assignedTo?: string | null;
+  assignedToName?: string | null;
   createdDate: string;
   lastContactDate: string;
   notes: string;
   archivedAt?: string | null;
   deletedAt?: string | null;
   borrowerStatus?: string | null;
+  dncHoldUntil?: string | null;
+  sharkTankStatus?: string | null;
 };
 
-export const leadStatuses: LeadStatus[] = ["New", "Contacted", "Prequalified", "Application Sent", "In Process", "Closed", "Lost"];
+export const leadStatuses: LeadStatus[] = ["New", "Contacted", "Prequalified", "Application Sent", "In Process", "Closed", "Lost", "DNC Hold"];
 export const loanPurposes: LeadLoanPurpose[] = ["Purchase", "Refinance", "DSCR", "Bank Statement", "P/L", "No Doc"];
 export const leadSources = ["Website", "Realtor Referral", "Past Client", "Open House", "Investor Meetup", "Social Media", "Phone Call"];
 export const assignedUsers = ["A. Lopez", "S. Patel", "P. James", "M. Rivera"];

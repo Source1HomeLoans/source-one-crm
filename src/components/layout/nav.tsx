@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, ClipboardList, Download, FileUp, Handshake, Home, LayoutDashboard, Megaphone, MessageSquareText, Settings, ShieldCheck, StickyNote, Users, type LucideIcon } from "lucide-react";
+import { Ban, BarChart3, ClipboardList, Download, FileUp, Handshake, Home, LayoutDashboard, Megaphone, MessageSquareText, Settings, ShieldCheck, StickyNote, Users, Waves, type LucideIcon } from "lucide-react";
 
 import { can, type AppRole } from "@/lib/security/permissions";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,8 @@ type NavItem = {
 const items: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
   { href: "/leads", label: "Leads", icon: Users, permission: "leads:manage" },
+  { href: "/shark-tank", label: "Shark Tank", icon: Waves, permission: "leads:manage" },
+  { href: "/dnc-hold", label: "6 Month Hold", icon: Ban, permission: "leads:manage" },
   { href: "/borrowers", label: "Borrowers", icon: Home, permission: "borrowers:manage" },
   { href: "/pipeline", label: "Pipeline", icon: BarChart3, permission: "loans:manage" },
   { href: "/partners", label: "Partners", icon: Handshake, permission: "partners:manage" },

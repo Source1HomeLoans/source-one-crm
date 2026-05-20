@@ -3,13 +3,15 @@ import { ArrowLeft, CalendarDays, Mail, Phone, RefreshCw, UserRound } from "luci
 
 import { convertLeadToBorrowerAndRedirect } from "@/app/actions/leads";
 import { ActivityLog } from "@/components/activity/activity-log";
+import { DncLeadButton } from "@/components/leads/dnc-lead-button";
 import { LeadForm } from "@/components/leads/lead-form";
 import { ArchiveDeleteActions } from "@/components/records/archive-delete-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasSupabaseConfig } from "@/lib/env";
 import { getActivitiesForContact, type Activity, type ActivityType } from "@/lib/data/activity";
-import { getLeadById, type Lead, type LeadLoanPurpose, type LeadStatus } from "@/lib/data/leads";
+import { getLeadById, type Lead, type LeadStatus } from "@/lib/data/leads";
+import { mapLeadRow } from "@/lib/data/lead-mapping";
 import { createServerClient, getCurrentProfile } from "@/lib/supabase/server";
 import { cn, currency } from "@/lib/utils";
 
@@ -32,25 +34,8 @@ const statusTones: Record<LeadStatus, "blue" | "green" | "gold" | "red" | "slate
   "Application Sent": "gold",
   "In Process": "blue",
   Closed: "green",
-  Lost: "red"
-};
-
-const loanPurposeLabels: Record<string, LeadLoanPurpose> = {
-  purchase: "Purchase",
-  refinance: "Refinance",
-  dscr: "DSCR",
-  bank_statement: "Bank Statement",
-  p_and_l: "P/L",
-  no_doc: "No Doc"
-};
-
-const creditScoreLabels: Record<string, string> = {
-  below_580: "Below 580",
-  "580_619": "580-619",
-  "620_679": "620-679",
-  "680_739": "680-739",
-  "740_plus": "740+",
-  unknown: "Unknown"
+  Lost: "red",
+  "DNC Hold": "red"
 };
 
 const activityTypeLabels: Record<string, ActivityType> = {
@@ -61,7 +46,6 @@ const activityTypeLabels: Record<string, ActivityType> = {
   system_update: "System Update"
 };
 
-type LeadRow = Record<string, string | number | null>;
 type ActivityRow = Record<string, string | null>;
 
 export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams?: { conversion_error?: string } }) {
@@ -83,6 +67,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <form action={convertLeadToBorrowerAndRedirect.bind(null, lead.id)}>
             <button type="submit" className={buttonClass("primary")}>Convert to borrower</button>
           </form>
+          <DncLeadButton leadId={lead.id} disabled={lead.status === "DNC Hold"} compact={false} />
           <ArchiveDeleteActions recordId={lead.id} recordType="lead" returnHref="/leads" compact={false} />
         </div>
       </div>
@@ -176,28 +161,29 @@ async function loadLeadDetail(leadId: string) {
     return {
       lead,
       activities: getActivitiesForContact(leadId),
-      linkedBorrowerStatus: null
+      linkedBorrowerStatus: null,
+      profile: null
     };
   }
 
   const profile = await getCurrentProfile();
   if (!profile) {
-    return { lead: null, activities: [], linkedBorrowerStatus: null };
+    return { lead: null, activities: [], linkedBorrowerStatus: null, profile: null };
   }
 
   const supabase = createServerClient();
   const { data } = await supabase
     .from("leads")
-    .select("*, owner:profiles!leads_owner_id_fkey(full_name)")
+    .select("*, owner:profiles!leads_owner_id_fkey(full_name), assigned:profiles!leads_assigned_to_fkey(full_name)")
     .eq("id", leadId)
     .maybeSingle();
 
   if (!data) {
-    return { lead: null, activities: [], linkedBorrowerStatus: null };
+    return { lead: null, activities: [], linkedBorrowerStatus: null, profile };
   }
 
-  const lead = mapLead(data as LeadRow, profile.full_name);
-  const row = data as LeadRow;
+  const lead = mapLeadRow(data as Parameters<typeof mapLeadRow>[0], profile.full_name);
+  const row = data as { borrower_id?: string | null };
   let linkedBorrowerStatus: string | null = null;
   if (typeof row.borrower_id === "string") {
     const { data: borrower } = await supabase.from("borrowers").select("borrower_status").eq("id", row.borrower_id).maybeSingle();
@@ -212,29 +198,8 @@ async function loadLeadDetail(leadId: string) {
   return {
     lead,
     activities: (activityRows ?? []).map((activity) => mapActivity(activity as ActivityRow, lead)),
-    linkedBorrowerStatus
-  };
-}
-
-function mapLead(row: LeadRow, fallbackOwnerName: string): Lead {
-  const owner = row.owner as unknown as { full_name?: string } | null;
-
-  return {
-    id: String(row.id),
-    firstName: String(row.first_name ?? ""),
-    lastName: String(row.last_name ?? ""),
-    phone: String(row.phone ?? ""),
-    email: String(row.email ?? ""),
-    source: String(row.source ?? "direct"),
-    loanPurpose: loanPurposeLabels[String(row.loan_purpose)] ?? "Purchase",
-    state: String(row.property_state ?? ""),
-    estimatedLoanAmount: Number(row.estimated_loan_amount ?? 0),
-    creditScoreRange: creditScoreLabels[String(row.credit_score_range)] ?? "Unknown",
-    status: statusLabels[String(row.status)] ?? "New",
-    assignedLoanOfficer: owner?.full_name ?? fallbackOwnerName,
-    createdDate: String(row.created_at ?? "").slice(0, 10),
-    lastContactDate: row.last_contact_at ? String(row.last_contact_at).slice(0, 10) : "Not contacted",
-    notes: String(row.notes ?? "")
+    linkedBorrowerStatus,
+    profile
   };
 }
 

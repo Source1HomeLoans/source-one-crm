@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/app/actions/_helpers";
 import { checkbox, failure, formText, isAllowed, nullableNumber, nullableText, success, validateEmail, validatePhone } from "@/lib/validation/forms";
 
-const leadStatuses = ["new", "contacted", "prequalified", "application_sent", "in_process", "closed", "lost"] as const;
+const leadStatuses = ["new", "contacted", "prequalified", "application_sent", "in_process", "closed", "lost", "dnc_hold"] as const;
 const loanPurposes = ["purchase", "refinance", "dscr", "bank_statement", "p_and_l", "no_doc"] as const;
 const creditRanges = ["below_580", "580_619", "620_679", "680_739", "740_plus", "unknown"] as const;
 
@@ -14,8 +14,10 @@ const statusMap: Record<string, (typeof leadStatuses)[number]> = {
   New: "new",
   Contacted: "contacted",
   Prequalified: "prequalified",
+  "Pre Qualified": "prequalified",
   "Application Sent": "application_sent",
   "In Process": "in_process",
+  "DNC Hold": "dnc_hold",
   Closed: "closed",
   Lost: "lost"
 };
@@ -63,7 +65,7 @@ const borrowerSchemaFallbackKeys = [
   "borrower_status"
 ];
 
-const leadSchemaFallbackKeys = ["property_address", "property_type"];
+const leadSchemaFallbackKeys = ["property_address", "property_type", "assigned_to", "dnc_hold_until", "shark_tank_status"];
 
 const creditRangeMap: Record<string, (typeof creditRanges)[number]> = {
   "Below 580": "below_580",
@@ -114,6 +116,7 @@ function leadPayload(formData: FormData, ownerId: string) {
   if (!validateEmail(email)) fieldErrors.email = "Enter a valid email address.";
   if (!validatePhone(phone)) fieldErrors.phone = "Enter a valid phone number.";
   if (!isAllowed(status, leadStatuses)) fieldErrors.status = "Choose a valid lead status.";
+  if (status === "dnc_hold") fieldErrors.status = "Use the DNC action to place a lead on hold.";
   if (!isAllowed(loanPurpose, loanPurposes)) fieldErrors.loan_purpose = "Choose a valid loan purpose.";
   if (!isAllowed(creditScoreRange, creditRanges)) fieldErrors.credit_score_range = "Choose a valid credit score range.";
   if (Number.isNaN(estimatedLoanAmount)) fieldErrors.estimated_loan_amount = "Enter a valid loan amount.";
@@ -134,6 +137,8 @@ function leadPayload(formData: FormData, ownerId: string) {
       property_state: mappedNullableText(formData, "property_state", "state"),
       property_address: nullableText(formData, "property_address"),
       property_type: nullableText(formData, "property_type"),
+      assigned_to: ownerId,
+      shark_tank_status: ["new", "contacted", "prequalified"].includes(status) ? "open" : null,
       last_contact_at: mappedNullableText(formData, "last_contact_at", "last-contact-date"),
       notes: nullableText(formData, "notes"),
       sms_consent: checkbox(formData, "sms_consent"),
@@ -269,7 +274,7 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
   const existingBorrowerId = typeof leadRow.borrower_id === "string" ? leadRow.borrower_id : null;
 
   if (existingBorrowerId) {
-    await auth.supabase.from("leads").update({ status: "in_process", borrower_id: existingBorrowerId }).eq("id", leadId);
+    await updateLeadWorkflowState(leadId, { status: "in_process", borrower_id: existingBorrowerId, shark_tank_status: null, dnc_hold_until: null });
     await writeLeadConversionActivity(leadId, existingBorrowerId, auth.profile.id, false);
     return { ...success("Lead linked to existing borrower."), borrowerId: existingBorrowerId, created: false };
   }
@@ -277,7 +282,7 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
   const matchedBorrowerId = await findExistingBorrowerForLead(leadRow);
 
   if (matchedBorrowerId) {
-    await auth.supabase.from("leads").update({ status: "in_process", borrower_id: matchedBorrowerId }).eq("id", leadId);
+    await updateLeadWorkflowState(leadId, { status: "in_process", borrower_id: matchedBorrowerId, shark_tank_status: null, dnc_hold_until: null });
     await writeLeadConversionActivity(leadId, matchedBorrowerId, auth.profile.id, false);
     return { ...success("Lead linked to existing borrower."), borrowerId: matchedBorrowerId, created: false };
   }
@@ -289,12 +294,22 @@ async function convertLeadToBorrowerRecord(leadId: string): Promise<(LeadActionR
   const borrowerId = (borrower as { id?: string } | null)?.id;
   if (!borrowerId) return { ...failure("Borrower was created but no borrower ID was returned."), created: false };
 
-  const { error: leadUpdateError } = await auth.supabase.from("leads").update({ status: "in_process", borrower_id: borrowerId }).eq("id", leadId);
+  const { error: leadUpdateError } = await updateLeadWorkflowState(leadId, { status: "in_process", borrower_id: borrowerId, shark_tank_status: null, dnc_hold_until: null });
   if (leadUpdateError) return { ...failure(leadUpdateError.message), created: false };
 
   await writeLeadConversionActivity(leadId, borrowerId, auth.profile.id, true);
 
   return { ...success("Lead moved to In Process and borrower profile created."), borrowerId, created: true };
+}
+
+async function updateLeadWorkflowState(leadId: string, payload: Record<string, unknown>) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase) return { error: { message: auth.error.message } };
+
+  const result = await auth.supabase.from("leads").update(payload).eq("id", leadId);
+  if (!result.error || !isMissingOptionalColumnError(result.error.message, leadSchemaFallbackKeys)) return result;
+
+  return auth.supabase.from("leads").update(stripOptionalColumns(payload, leadSchemaFallbackKeys)).eq("id", leadId);
 }
 
 async function loadLeadForBorrowerConversion(leadId: string) {
@@ -465,6 +480,139 @@ export async function archiveLead(leadId: string) {
   return success("Lead archived.");
 }
 
+export async function claimLead(leadId: string) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+
+  const { data: lead, error: leadError } = await auth.supabase.from("leads").select("assigned_to, owner_id, status").eq("id", leadId).single();
+  if (leadError) return failure(leadError.message);
+
+  const row = lead as { assigned_to?: string | null; owner_id?: string | null; status?: string } | null;
+  if (row?.assigned_to && row.assigned_to !== auth.profile.id && auth.profile.role !== "admin") {
+    return failure("This lead is already assigned.");
+  }
+
+  const { error } = await updateLeadWorkflowState(leadId, {
+    assigned_to: auth.profile.id,
+    owner_id: auth.profile.id,
+    shark_tank_status: ["new", "contacted", "prequalified"].includes(row?.status ?? "") ? "claimed" : null
+  });
+  if (error) return failure(error.message);
+
+  await writeLeadWorkflowActivity(leadId, auth.profile.id, "Lead claimed");
+  revalidatePath("/shark-tank");
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  return success("Lead claimed.");
+}
+
+export async function assignLeadToLoanOfficer(formData: FormData) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+  if (auth.profile.role !== "admin") return failure("Only admins can assign Shark Tank leads.");
+
+  const leadId = formText(formData, "lead_id");
+  const assignedTo = formText(formData, "assigned_to");
+  if (!leadId || !assignedTo) return failure("Choose a loan officer to assign this lead.");
+
+  const { error } = await updateLeadWorkflowState(leadId, {
+    assigned_to: assignedTo,
+    owner_id: assignedTo,
+    shark_tank_status: "assigned"
+  });
+  if (error) return failure(error.message);
+
+  await writeLeadWorkflowActivity(leadId, auth.profile.id, "Lead assigned to loan officer");
+  revalidatePath("/shark-tank");
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  return success("Lead assigned.");
+}
+
+export async function placeLeadOnDncHold(leadId: string) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+
+  const holdUntil = new Date();
+  holdUntil.setMonth(holdUntil.getMonth() + 6);
+  const { error } = await updateLeadWorkflowState(leadId, {
+    dnc_hold_until: holdUntil.toISOString(),
+    shark_tank_status: "dnc_hold"
+  });
+  if (error) return failure(error.message);
+
+  await writeLeadWorkflowActivity(leadId, auth.profile.id, "Lead placed on 6 month DNC hold");
+  revalidatePath("/shark-tank");
+  revalidatePath("/dnc-hold");
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  return success("Lead placed on 6 month DNC hold.");
+}
+
+export async function releaseDncHold(leadId: string) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+  if (auth.profile.role !== "admin") return failure("Only admins can release DNC holds early.");
+
+  const { error } = await updateLeadWorkflowState(leadId, {
+    status: "new",
+    dnc_hold_until: null,
+    shark_tank_status: "open"
+  });
+  if (error) return failure(error.message);
+
+  await writeLeadWorkflowActivity(leadId, auth.profile.id, "Lead returned to Shark Tank from DNC hold");
+  revalidatePath("/shark-tank");
+  revalidatePath("/dnc-hold");
+  revalidatePath("/leads");
+  revalidatePath(`/leads/${leadId}`);
+  return success("Lead returned to Shark Tank.");
+}
+
+export async function logLeadCall(leadId: string) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+
+  const { data: lead } = await auth.supabase.from("leads").select("dnc_hold_until, shark_tank_status").eq("id", leadId).single();
+  const row = lead as { dnc_hold_until?: string | null; shark_tank_status?: string | null } | null;
+  if (row?.dnc_hold_until || row?.shark_tank_status === "dnc_hold") return failure("Calling is disabled while this lead is on DNC hold.");
+
+  await auth.supabase.from("communication_history").insert({
+    owner_id: auth.profile.id,
+    lead_id: leadId,
+    channel: "call",
+    direction: "outbound",
+    subject: "Call logged",
+    summary: "Outbound call logged from Shark Tank",
+    occurred_at: new Date().toISOString()
+  });
+  revalidatePath("/shark-tank");
+  revalidatePath(`/leads/${leadId}`);
+  return success("Call logged.");
+}
+
+export async function logLeadText(leadId: string) {
+  const auth = await requirePermission("leads:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+
+  const { data: lead } = await auth.supabase.from("leads").select("dnc_hold_until, shark_tank_status").eq("id", leadId).single();
+  const row = lead as { dnc_hold_until?: string | null; shark_tank_status?: string | null } | null;
+  if (row?.dnc_hold_until || row?.shark_tank_status === "dnc_hold") return failure("Texting is disabled while this lead is on DNC hold.");
+
+  await auth.supabase.from("communication_history").insert({
+    owner_id: auth.profile.id,
+    lead_id: leadId,
+    channel: "text",
+    direction: "outbound",
+    subject: "Text logged",
+    summary: "Outbound text logged from Shark Tank",
+    occurred_at: new Date().toISOString()
+  });
+  revalidatePath("/shark-tank");
+  revalidatePath(`/leads/${leadId}`);
+  return success("Text logged.");
+}
+
 async function writeRecordLifecycleActivity(table: "leads" | "borrowers", id: string, actorId: string | null, eventType: "Record archived" | "Record deleted") {
   const auth = await requirePermission("activity:view");
   if (auth.error || !auth.supabase || !actorId) return;
@@ -480,6 +628,28 @@ async function writeRecordLifecycleActivity(table: "leads" | "borrowers", id: st
     owner_id: actorId,
     lead_id: table === "leads" ? id : null,
     borrower_id: table === "borrowers" ? id : null,
+    channel: "system_update",
+    direction: "system",
+    subject: eventType,
+    summary: eventType,
+    occurred_at: new Date().toISOString()
+  });
+}
+
+async function writeLeadWorkflowActivity(leadId: string, actorId: string, eventType: string) {
+  const auth = await requirePermission("activity:view");
+  if (auth.error || !auth.supabase) return;
+
+  await auth.supabase.from("user_activity_events").insert({
+    actor_id: actorId,
+    event_type: eventType,
+    entity_table: "leads",
+    entity_id: leadId
+  });
+
+  await auth.supabase.from("communication_history").insert({
+    owner_id: actorId,
+    lead_id: leadId,
     channel: "system_update",
     direction: "system",
     subject: eventType,

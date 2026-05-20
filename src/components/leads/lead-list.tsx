@@ -7,6 +7,7 @@ import { Edit3, Eye, Plus, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DncLeadButton } from "@/components/leads/dnc-lead-button";
 import { LeadForm } from "@/components/leads/lead-form";
 import { ArchiveDeleteActions } from "@/components/records/archive-delete-actions";
 import { assignedUsers, leads, leadSources, leadStatuses, loanPurposes, type LeadStatus } from "@/lib/data/leads";
@@ -19,7 +20,8 @@ const statusTones: Record<LeadStatus, "blue" | "green" | "gold" | "red" | "slate
   "Application Sent": "gold",
   "In Process": "blue",
   Closed: "green",
-  Lost: "red"
+  Lost: "red",
+  "DNC Hold": "red"
 };
 
 export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads }) {
@@ -167,6 +169,7 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
                           <Edit3 size={17} />
                         </button>
                         <ArchiveDeleteActions recordId={lead.id} recordType="lead" />
+                        <DncLeadButton leadId={lead.id} disabled={lead.status === "DNC Hold"} />
                       </div>
                     </td>
                   </tr>
