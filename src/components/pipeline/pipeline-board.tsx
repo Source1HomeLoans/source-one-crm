@@ -42,76 +42,74 @@ export function PipelineBoard() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div>
+    <div className="max-w-full space-y-5 overflow-x-hidden">
+      <div className="flex min-w-0 flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div className="min-w-0">
           <h2 className="text-2xl font-semibold text-brand-ink">Loan Pipeline</h2>
-          <p className="mt-1 max-w-3xl text-sm text-slate-600">
+          <p className="mt-1 max-w-3xl break-words text-sm text-slate-600">
             Drag loan cards across mortgage milestones to keep borrower status, ownership, and next tasks visible.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 md:w-auto">
           <Summary label="Active loans" value={loans.filter((loan) => loan.status !== "Lost").length.toString()} />
           <Summary label="Pipeline volume" value={currency(totalVolume)} />
           <Summary label="Stages" value={pipelineStages.length.toString()} />
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-3">
-        <div className="grid min-w-[2600px] grid-cols-10 gap-3">
-          {pipelineStages.map((stage) => (
-            <section
-              key={stage}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setActiveStage(stage);
-              }}
-              onDragLeave={() => setActiveStage(null)}
-              onDrop={(event) => {
-                event.preventDefault();
-                const loanId = event.dataTransfer.getData("text/plain");
-                if (loanId) {
-                  moveLoan(loanId, stage);
-                }
-                setDraggingLoanId(null);
-                setActiveStage(null);
-              }}
-              className={cn(
-                "min-h-[560px] rounded-lg border border-slate-200 bg-slate-100/70 p-3 transition",
-                activeStage === stage && "border-brand-teal bg-brand-teal/10"
-              )}
-            >
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-semibold text-brand-ink">{stage}</h3>
-                  <p className="text-xs text-slate-500">{loansByStage[stage].length} loans</p>
-                </div>
-                <Badge tone={statusTone[stage]}>{currency(loansByStage[stage].reduce((total, loan) => total + loan.loanAmount, 0))}</Badge>
+      <div className="grid max-w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {pipelineStages.map((stage) => (
+          <section
+            key={stage}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setActiveStage(stage);
+            }}
+            onDragLeave={() => setActiveStage(null)}
+            onDrop={(event) => {
+              event.preventDefault();
+              const loanId = event.dataTransfer.getData("text/plain");
+              if (loanId) {
+                moveLoan(loanId, stage);
+              }
+              setDraggingLoanId(null);
+              setActiveStage(null);
+            }}
+            className={cn(
+              "min-w-0 rounded-lg border border-slate-200 bg-slate-100/70 p-3 transition",
+              activeStage === stage && "border-brand-teal bg-brand-teal/10"
+            )}
+          >
+            <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="break-words text-sm font-semibold text-brand-ink">{stage}</h3>
+                <p className="text-xs text-slate-500">{loansByStage[stage].length} loans</p>
               </div>
+              <Badge tone={statusTone[stage]}>{currency(loansByStage[stage].reduce((total, loan) => total + loan.loanAmount, 0))}</Badge>
+            </div>
 
-              <div className="space-y-3">
-                {loansByStage[stage].map((loan) => (
-                  <LoanCard
-                    key={loan.id}
-                    loan={loan}
-                    isDragging={draggingLoanId === loan.id}
-                    onMove={moveLoan}
-                    onDragStart={() => setDraggingLoanId(loan.id)}
-                    onDragEnd={() => {
-                      setDraggingLoanId(null);
-                      setActiveStage(null);
-                    }}
-                  />
-                ))}
-                {loansByStage[stage].length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-center text-xs text-slate-500">
-                    Drop cards here
-                  </div>
-                ) : null}
-              </div>
-            </section>
-          ))}
-        </div>
+            <div className="space-y-3">
+              {loansByStage[stage].map((loan) => (
+                <LoanCard
+                  key={loan.id}
+                  loan={loan}
+                  isDragging={draggingLoanId === loan.id}
+                  onMove={moveLoan}
+                  onDragStart={() => setDraggingLoanId(loan.id)}
+                  onDragEnd={() => {
+                    setDraggingLoanId(null);
+                    setActiveStage(null);
+                  }}
+                />
+              ))}
+              {loansByStage[stage].length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-center text-xs text-slate-500">
+                  Drop cards here
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );
@@ -139,20 +137,20 @@ function LoanCard({
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      className={cn("cursor-grab p-4 shadow-sm active:cursor-grabbing", isDragging && "opacity-50 ring-2 ring-brand-teal")}
+      className={cn("min-w-0 cursor-grab p-4 shadow-sm active:cursor-grabbing", isDragging && "opacity-50 ring-2 ring-brand-teal")}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-brand-ink">{loan.borrowerName}</p>
-          <p className="mt-1 text-sm text-slate-500">{loan.loanType}</p>
+          <p className="break-words font-semibold text-brand-ink">{loan.borrowerName}</p>
+          <p className="mt-1 break-words text-sm text-slate-500">{loan.loanType}</p>
         </div>
         <GripVertical size={17} className="shrink-0 text-slate-400" />
       </div>
 
       <div className="mt-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center justify-between gap-3">
           <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Amount</span>
-          <span className="text-sm font-semibold text-brand-ink">{currency(loan.loanAmount)}</span>
+          <span className="break-words text-right text-sm font-semibold text-brand-ink">{currency(loan.loanAmount)}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <UserRound size={16} className="text-brand-blue" />
@@ -184,9 +182,9 @@ function LoanCard({
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-brand-ink">{value}</p>
+      <p className="mt-1 break-words text-lg font-semibold text-brand-ink">{value}</p>
     </div>
   );
 }
