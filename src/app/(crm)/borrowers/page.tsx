@@ -20,6 +20,17 @@ const loanProgramLabels: Record<string, LoanProgram> = {
   hard_money: "Hard Money"
 };
 
+const creditScoreRangeLabels: Record<string, string> = {
+  below_580: "Below 580",
+  "580_619": "580-619",
+  "620_679": "620-679",
+  "680_699": "680-699",
+  "700_739": "700-739",
+  "680_739": "680-739",
+  "740_plus": "740+",
+  unknown: "Unknown"
+};
+
 export default async function BorrowersPage() {
   const profile = hasSupabaseConfig() ? await getCurrentProfile() : null;
   const supabase = profile ? createServerClient() : null;
@@ -54,7 +65,7 @@ export default async function BorrowersPage() {
         yearsInBusiness: "TBD"
       },
       credit: {
-        scoreRange: row.credit_score_range ? String(row.credit_score_range) : row.credit_score ? String(row.credit_score) : "Unknown",
+        scoreRange: creditScoreRangeLabels[String(row.credit_score_range)] ?? String(row.credit_score_range ?? "Unknown"),
         estimatedScore: Number(row.credit_score ?? 0),
         liabilities: "TBD",
         latePayments: "TBD"

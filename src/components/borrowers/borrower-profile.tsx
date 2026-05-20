@@ -33,7 +33,7 @@ export function BorrowerProfile({ borrower }: { borrower: BorrowerProfileData })
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Info icon={Phone} label="Phone" value={borrower.phone} />
         <Info icon={Mail} label="Email" value={borrower.email} />
-        <Info icon={UserRound} label="Credit" value={`${borrower.credit.estimatedScore} (${borrower.credit.scoreRange})`} />
+        <Info icon={UserRound} label="Credit" value={creditDisplay(borrower)} />
         <Info icon={CalendarClock} label="Timeline" value={borrower.loanScenario.timeline} />
       </section>
 
@@ -60,7 +60,7 @@ export function BorrowerProfile({ borrower }: { borrower: BorrowerProfileData })
           ["History", borrower.employmentIncome.yearsInBusiness]
         ]} />
         <DetailCard title="Credit" rows={[
-          ["Estimated score", borrower.credit.estimatedScore.toString()],
+          ["Estimated score", borrower.credit.estimatedScore ? borrower.credit.estimatedScore.toString() : "Not provided"],
           ["Score range", borrower.credit.scoreRange],
           ["Liabilities", borrower.credit.liabilities],
           ["Late payments", borrower.credit.latePayments]
@@ -109,6 +109,13 @@ export function BorrowerProfile({ borrower }: { borrower: BorrowerProfileData })
       <ActivityLog activities={activities} title="Borrower Activity Log" />
     </div>
   );
+}
+
+function creditDisplay(borrower: BorrowerProfileData) {
+  const exactScore = borrower.credit.estimatedScore ? borrower.credit.estimatedScore.toString() : null;
+  const range = borrower.credit.scoreRange && borrower.credit.scoreRange !== "Unknown" ? borrower.credit.scoreRange : null;
+  if (exactScore && range) return `${exactScore} (${range})`;
+  return exactScore ?? range ?? "Unknown";
 }
 
 function Info({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {

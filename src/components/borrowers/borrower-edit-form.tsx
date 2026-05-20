@@ -42,6 +42,29 @@ const loanProgramValues: Record<string, string> = {
   "Hard Money": "hard_money"
 };
 
+const creditScoreRanges = [
+  ["", "Not selected"],
+  ["below_580", "Below 580"],
+  ["580_619", "580-619"],
+  ["620_679", "620-679"],
+  ["680_699", "680-699"],
+  ["700_739", "700-739"],
+  ["680_739", "680-739"],
+  ["740_plus", "740+"],
+  ["unknown", "Unknown"]
+];
+
+const creditScoreRangeValues: Record<string, string> = {
+  "Below 580": "below_580",
+  "580-619": "580_619",
+  "620-679": "620_679",
+  "680-699": "680_699",
+  "700-739": "700_739",
+  "680-739": "680_739",
+  "740+": "740_plus",
+  Unknown: "unknown"
+};
+
 export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -74,7 +97,8 @@ export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
       <Field label="Email" name="email" type="email" defaultValue={borrower.email} />
       <Select label="Loan program" name="loan_program" options={loanPrograms} defaultValue={loanProgramValues[borrower.loanProgram.selected] ?? "conventional"} />
       <Field label="Loan amount" name="estimated_loan_amount" type="number" defaultValue={String(borrower.loanScenario.loanAmount || "")} />
-      <Field label="Credit score" name="credit_score" type="number" defaultValue={String(borrower.credit.estimatedScore || "")} />
+      <Field label="Credit score" name="credit_score" type="number" min="300" max="850" defaultValue={String(borrower.credit.estimatedScore || "")} />
+      <Select label="Credit score range" name="credit_score_range" options={creditScoreRanges} defaultValue={creditScoreRangeValues[borrower.credit.scoreRange] ?? ""} />
       <Field label="Property address" name="property_address" defaultValue={borrower.property.address === "TBD" ? "" : borrower.property.address} />
       <Field label="State" name="property_state" defaultValue={borrower.state} maxLength={2} />
       <Select label="Status" name="borrower_status" options={borrowerStatuses} defaultValue={(borrower as BorrowerProfile & { borrowerStatus?: string }).borrowerStatus ?? "file_started"} />
@@ -105,7 +129,25 @@ export function BorrowerEditForm({ borrower }: { borrower: BorrowerProfile }) {
   );
 }
 
-function Field({ label, name, defaultValue, type = "text", required, maxLength }: { label: string; name: string; defaultValue?: string; type?: string; required?: boolean; maxLength?: number }) {
+function Field({
+  label,
+  name,
+  defaultValue,
+  type = "text",
+  required,
+  maxLength,
+  min,
+  max
+}: {
+  label: string;
+  name: string;
+  defaultValue?: string;
+  type?: string;
+  required?: boolean;
+  maxLength?: number;
+  min?: string;
+  max?: string;
+}) {
   return (
     <div className="min-w-0">
       <label className="text-sm font-medium text-slate-700" htmlFor={name}>
@@ -118,6 +160,8 @@ function Field({ label, name, defaultValue, type = "text", required, maxLength }
         defaultValue={defaultValue}
         required={required}
         maxLength={maxLength}
+        min={min}
+        max={max}
         className="mt-2 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
       />
     </div>

@@ -77,7 +77,7 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
                     </td>
                     <td className="px-3 py-4 text-slate-700">{borrower.email}</td>
                     <td className="px-3 py-4 text-slate-700">{borrower.phone}</td>
-                    <td className="px-3 py-4 text-slate-700">{borrower.credit.estimatedScore}</td>
+                    <td className="px-3 py-4 text-slate-700">{creditDisplay(borrower)}</td>
                     <td className="px-3 py-4">
                       <Badge tone="blue">{borrower.loanProgram.selected}</Badge>
                     </td>
@@ -104,4 +104,9 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
       </Card>
     </div>
   );
+}
+
+function creditDisplay(borrower: (typeof borrowers)[number]) {
+  if (borrower.credit.estimatedScore) return borrower.credit.estimatedScore.toString();
+  return borrower.credit.scoreRange || "Unknown";
 }

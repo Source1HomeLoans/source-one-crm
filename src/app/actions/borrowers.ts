@@ -7,6 +7,7 @@ import { checkbox, failure, formText, nullableNumber, nullableText, success, val
 
 const borrowerStatuses = ["file_started", "docs_needed", "submitted", "approved", "clear_to_close", "funded", "inactive"] as const;
 const loanPrograms = ["conventional", "fha", "va", "dscr", "bank_statement", "p_and_l", "no_doc", "non_qm", "hard_money"] as const;
+const creditScoreRanges = ["", "below_580", "580_619", "620_679", "680_699", "700_739", "680_739", "740_plus", "unknown"] as const;
 
 const borrowerSaveColumns = new Set([
   "owner_id",
@@ -16,6 +17,7 @@ const borrowerSaveColumns = new Set([
   "email",
   "phone",
   "credit_score",
+  "credit_score_range",
   "annual_income",
   "loan_program",
   "estimated_loan_amount",
@@ -40,6 +42,7 @@ function borrowerPayload(formData: FormData, ownerId: string) {
   const email = nullableText(formData, "email");
   const phone = nullableText(formData, "phone");
   const creditScore = nullableNumber(formData, "credit_score");
+  const creditScoreRange = formText(formData, "credit_score_range");
   const annualIncome = nullableNumber(formData, "annual_income");
   const loanAmount = nullableNumber(formData, "estimated_loan_amount");
   const loanProgram = formText(formData, "loan_program") || "conventional";
@@ -51,6 +54,7 @@ function borrowerPayload(formData: FormData, ownerId: string) {
   if (!validateEmail(email)) fieldErrors.email = "Enter a valid email address.";
   if (!validatePhone(phone)) fieldErrors.phone = "Enter a valid phone number.";
   if (Number.isNaN(creditScore) || (creditScore !== null && (creditScore < 300 || creditScore > 850))) fieldErrors.credit_score = "Enter a score from 300 to 850.";
+  if (!creditScoreRanges.includes(creditScoreRange as (typeof creditScoreRanges)[number])) fieldErrors.credit_score_range = "Choose a valid credit score range.";
   if (Number.isNaN(annualIncome)) fieldErrors.annual_income = "Enter a valid annual income.";
   if (Number.isNaN(loanAmount)) fieldErrors.estimated_loan_amount = "Enter a valid loan amount.";
   if (!loanPrograms.includes(loanProgram as (typeof loanPrograms)[number])) fieldErrors.loan_program = "Choose a valid loan program.";
@@ -64,6 +68,7 @@ function borrowerPayload(formData: FormData, ownerId: string) {
     email,
     phone,
     credit_score: creditScore,
+    credit_score_range: creditScoreRange || null,
     annual_income: annualIncome,
     loan_program: loanProgram,
     estimated_loan_amount: loanAmount,

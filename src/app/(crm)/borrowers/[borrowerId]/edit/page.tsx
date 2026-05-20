@@ -23,6 +23,17 @@ const programLabels: Record<string, LoanProgram> = {
   refinance: "Conventional"
 };
 
+const creditScoreRangeLabels: Record<string, string> = {
+  below_580: "Below 580",
+  "580_619": "580-619",
+  "620_679": "620-679",
+  "680_699": "680-699",
+  "700_739": "700-739",
+  "680_739": "680-739",
+  "740_plus": "740+",
+  unknown: "Unknown"
+};
+
 export default async function BorrowerEditPage({ params }: { params: { borrowerId: string } }) {
   const borrower = await loadBorrower(params.borrowerId);
 
@@ -87,7 +98,12 @@ async function loadBorrower(borrowerId: string) {
     assignedLoanOfficer: profile.full_name,
     loanScenario: { purpose: selected, loanAmount: Number(row.estimated_loan_amount ?? 0), purchasePrice: Number(row.estimated_loan_amount ?? 0), downPayment: 0, occupancy: "TBD", timeline: "TBD" },
     employmentIncome: { employmentType: "TBD", employerOrBusiness: "TBD", monthlyIncome: 0, incomeDocumentation: "TBD", yearsInBusiness: "TBD" },
-    credit: { scoreRange: row.credit_score_range ? String(row.credit_score_range) : row.credit_score ? String(row.credit_score) : "Unknown", estimatedScore: Number(row.credit_score ?? 0), liabilities: "TBD", latePayments: "TBD" },
+    credit: {
+      scoreRange: creditScoreRangeLabels[String(row.credit_score_range)] ?? String(row.credit_score_range ?? "Unknown"),
+      estimatedScore: Number(row.credit_score ?? 0),
+      liabilities: "TBD",
+      latePayments: "TBD"
+    },
     property: { address: String(row.property_address ?? "TBD"), propertyType: String(row.property_type ?? "TBD"), units: "TBD", occupancy: "TBD", estimatedValue: Number(row.estimated_loan_amount ?? 0) },
     loanProgram: { selected, eligiblePrograms: [selected], notes: notes || "Created from lead conversion." },
     documents: [],

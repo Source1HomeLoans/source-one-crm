@@ -36,6 +36,17 @@ const statusLabels: Record<string, string> = {
   lost: "Lost"
 };
 
+const creditScoreRangeLabels: Record<string, string> = {
+  below_580: "Below 580",
+  "580_619": "580-619",
+  "620_679": "620-679",
+  "680_699": "680-699",
+  "700_739": "700-739",
+  "680_739": "680-739",
+  "740_plus": "740+",
+  unknown: "Unknown"
+};
+
 export default async function BorrowerProfilePage({ params }: { params: { borrowerId: string } }) {
   const { borrower, linkedLeadStatus } = await loadBorrower(params.borrowerId);
 
@@ -117,7 +128,12 @@ function mapBorrower(row: Record<string, string | number | boolean | null>, owne
       timeline: "TBD"
     },
     employmentIncome: { employmentType: "TBD", employerOrBusiness: "TBD", monthlyIncome: 0, incomeDocumentation: "TBD", yearsInBusiness: "TBD" },
-    credit: { scoreRange: row.credit_score_range ? String(row.credit_score_range) : row.credit_score ? String(row.credit_score) : "Unknown", estimatedScore: Number(row.credit_score ?? 0), liabilities: "TBD", latePayments: "TBD" },
+    credit: {
+      scoreRange: creditScoreRangeLabels[String(row.credit_score_range)] ?? String(row.credit_score_range ?? "Unknown"),
+      estimatedScore: Number(row.credit_score ?? 0),
+      liabilities: "TBD",
+      latePayments: "TBD"
+    },
     property: { address: String(row.property_address ?? "TBD"), propertyType: String(row.property_type ?? "TBD"), units: "TBD", occupancy: "TBD", estimatedValue: Number(row.estimated_loan_amount ?? 0) },
     loanProgram: { selected, eligiblePrograms: [selected], notes: notes || "Created from lead conversion." },
     documents: [],
