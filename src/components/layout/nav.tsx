@@ -15,6 +15,7 @@ const items: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard:view" },
   { href: "/leads", label: "Leads", icon: Users, permission: "leads:manage" },
   { href: "/shark-tank", label: "Shark Tank", icon: Waves, permission: "leads:manage" },
+  { href: "/my-leads", label: "My Lead Queue", icon: ClipboardList, permission: "leads:manage" },
   { href: "/dnc-hold", label: "6 Month Hold", icon: Ban, permission: "leads:manage" },
   { href: "/borrowers", label: "Borrowers", icon: Home, permission: "borrowers:manage" },
   { href: "/pipeline", label: "Pipeline", icon: BarChart3, permission: "loans:manage" },

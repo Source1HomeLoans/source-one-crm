@@ -3,6 +3,7 @@ import { hasSupabaseConfig } from "@/lib/env";
 import { leads as demoLeads } from "@/lib/data/leads";
 import { mapLeadRow } from "@/lib/data/lead-mapping";
 import { createServerClient, getCurrentProfile } from "@/lib/supabase/server";
+import { runLeadWorkflowMaintenance } from "@/lib/leads/workflow-maintenance";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function LeadsPage() {
   const supabase = profile ? createServerClient() : null;
   let data = null;
   if (supabase && profile) {
+    await runLeadWorkflowMaintenance(supabase);
     let query = supabase
       .from("leads")
       .select("*, owner:profiles!leads_owner_id_fkey(full_name), assigned:profiles!leads_assigned_to_fkey(full_name)")

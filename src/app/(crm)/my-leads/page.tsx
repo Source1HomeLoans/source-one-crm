@@ -1,5 +1,4 @@
 import { LeadQueueTable } from "@/components/leads/lead-queue-table";
-import { leads as demoLeads } from "@/lib/data/leads";
 import { mapLeadRow } from "@/lib/data/lead-mapping";
 import { hasSupabaseConfig } from "@/lib/env";
 import { runLeadWorkflowMaintenance } from "@/lib/leads/workflow-maintenance";
@@ -7,17 +6,17 @@ import { createServerClient, getCurrentProfile } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function SharkTankPage() {
+export default async function MyLeadQueuePage() {
   const profile = hasSupabaseConfig() ? await getCurrentProfile() : null;
   const supabase = profile ? createServerClient() : null;
   const loanOfficers = supabase ? await loadLoanOfficers(supabase) : [];
-  const liveLeads = supabase && profile ? await loadSharkTankLeads(supabase, profile.full_name) : null;
+  const liveLeads = supabase && profile ? await loadMyLeadQueue(supabase, profile.full_name, profile.id, profile.role) : [];
 
   return (
     <LeadQueueTable
-      leads={profile ? liveLeads ?? [] : demoLeads.filter((lead) => ["New", "Contacted", "Prequalified"].includes(lead.status))}
-      title="Shark Tank"
-      mode="shark-tank"
+      leads={liveLeads}
+      title="My Lead Queue"
+      mode="my-queue"
       currentUserId={profile?.id ?? "demo"}
       currentUserRole={profile?.role ?? "loan_officer"}
       loanOfficers={loanOfficers}
@@ -25,18 +24,19 @@ export default async function SharkTankPage() {
   );
 }
 
-async function loadSharkTankLeads(supabase: ReturnType<typeof createServerClient>, ownerName: string) {
+async function loadMyLeadQueue(supabase: ReturnType<typeof createServerClient>, ownerName: string, profileId: string, role: string) {
   await runLeadWorkflowMaintenance(supabase);
   let query = supabase
     .from("leads")
     .select("*, owner:profiles!leads_owner_id_fkey(full_name), assigned:profiles!leads_assigned_to_fkey(full_name)")
-    .in("status", ["new", "contacted", "prequalified"])
-    .is("assigned_to", null)
     .is("converted_at", null)
     .is("dnc_hold_until", null)
     .is("archived_at", null)
     .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+    .not("assigned_to", "is", null)
+    .order("assignment_expires_at", { ascending: true });
+
+  if (role !== "admin") query = query.eq("assigned_to", profileId);
 
   const { data } = await query;
   return (data ?? []).map((lead) => mapLeadRow(lead as Parameters<typeof mapLeadRow>[0], ownerName));

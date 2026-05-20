@@ -16,6 +16,9 @@ export type Lead = {
   assignedLoanOfficer: string;
   assignedTo?: string | null;
   assignedToName?: string | null;
+  assignedAt?: string | null;
+  assignmentExpiresAt?: string | null;
+  convertedAt?: string | null;
   createdDate: string;
   lastContactDate: string;
   notes: string;
@@ -26,7 +29,7 @@ export type Lead = {
   sharkTankStatus?: string | null;
 };
 
-export const leadStatuses: LeadStatus[] = ["New", "Contacted", "Prequalified", "Application Sent", "In Process", "Closed", "Lost", "DNC Hold"];
+export const leadStatuses: LeadStatus[] = ["New", "Contacted", "Prequalified", "Application Sent", "In Process", "Closed", "Lost"];
 export const loanPurposes: LeadLoanPurpose[] = ["Purchase", "Refinance", "DSCR", "Bank Statement", "P/L", "No Doc"];
 export const leadSources = ["Website", "Realtor Referral", "Past Client", "Open House", "Investor Meetup", "Social Media", "Phone Call"];
 export const assignedUsers = ["A. Lopez", "S. Patel", "P. James", "M. Rivera"];

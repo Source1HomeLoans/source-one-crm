@@ -30,12 +30,12 @@ export function LeadQueueTable({
 }: {
   leads: Lead[];
   title: string;
-  mode: "shark-tank" | "dnc-hold";
+  mode: "shark-tank" | "my-queue" | "dnc-hold";
   currentUserId: string;
   currentUserRole: AppRole;
   loanOfficers?: LoanOfficerOption[];
 }) {
-  const [filter, setFilter] = useState(mode === "dnc-hold" ? "DNC Hold" : "All open opportunities");
+  const [filter, setFilter] = useState(mode === "dnc-hold" ? "DNC Hold" : mode === "shark-tank" ? "Unassigned" : "Assigned to me");
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
       if (filter === "Unassigned") return !lead.assignedTo;
@@ -51,7 +51,11 @@ export function LeadQueueTable({
         <div className="min-w-0">
           <h2 className="text-2xl font-semibold text-brand-ink">{title}</h2>
           <p className="mt-1 max-w-3xl break-words text-sm text-slate-600">
-            {mode === "shark-tank" ? "Claim, assign, contact, and advance open lead opportunities before they move into borrower files." : "Review DNC hold records, remaining hold time, and admin release controls."}
+            {mode === "shark-tank"
+              ? "Unassigned open opportunities available for claim or admin assignment."
+              : mode === "my-queue"
+                ? "Assigned leads with 30-day conversion windows before they return to Shark Tank."
+                : "Review DNC hold records, remaining hold time, and admin release controls."}
           </p>
         </div>
         <select
@@ -77,7 +81,7 @@ export function LeadQueueTable({
             <table className="w-full min-w-[1120px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-                  {["Lead", "Phone", "Email", "Loan Type", "Amount", "Credit", "Status", "Assigned", mode === "dnc-hold" ? "Hold Until" : "Source", mode === "dnc-hold" ? "Days Left" : "Last Contact", "Actions"].map((column) => (
+                  {["Lead", "Phone", "Email", "Loan Type", "Amount", "Credit", "Status", "Assigned", mode === "dnc-hold" ? "Hold Until" : "Source", mode === "dnc-hold" ? "Days Left" : mode === "my-queue" ? "Expires" : "Last Contact", "Actions"].map((column) => (
                     <th key={column} className="px-3 py-3 font-semibold">
                       {column}
                     </th>
@@ -96,9 +100,9 @@ export function LeadQueueTable({
                     <td className="px-3 py-4">
                       <Badge tone={statusTones[lead.status] ?? "slate"}>{lead.status === "Prequalified" ? "Pre Qualified" : lead.status}</Badge>
                     </td>
-                    <td className="px-3 py-4 text-slate-700">{lead.assignedToName ?? "Unassigned"}</td>
+                    <td className="px-3 py-4 text-slate-700">{assignmentLabel(lead)}</td>
                     <td className="px-3 py-4 text-slate-700">{mode === "dnc-hold" ? formatDate(lead.dncHoldUntil) : lead.source}</td>
-                    <td className="px-3 py-4 text-slate-700">{mode === "dnc-hold" ? daysRemaining(lead.dncHoldUntil) : lead.lastContactDate}</td>
+                    <td className="px-3 py-4 text-slate-700">{mode === "dnc-hold" ? daysRemaining(lead.dncHoldUntil) : mode === "my-queue" ? formatDate(lead.assignmentExpiresAt) : lead.lastContactDate}</td>
                     <td className="px-3 py-4">
                       <LeadWorkflowActions
                         leadId={lead.id}
@@ -110,6 +114,7 @@ export function LeadQueueTable({
                         showClaim={mode === "shark-tank"}
                         showAssign={mode === "shark-tank"}
                         showRelease={mode === "dnc-hold"}
+                        showReturn={mode === "my-queue"}
                       />
                     </td>
                   </tr>
@@ -121,6 +126,12 @@ export function LeadQueueTable({
       </Card>
     </div>
   );
+}
+
+function assignmentLabel(lead: Lead) {
+  if (!lead.assignedTo) return "Unassigned";
+  const days = daysRemaining(lead.assignmentExpiresAt);
+  return `${lead.assignedToName ?? "Assigned"} (${days} days left)`;
 }
 
 function formatDate(value?: string | null) {

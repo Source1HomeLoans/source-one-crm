@@ -4,6 +4,7 @@ const routePermissions: Array<{ prefix: string; permission: Permission }> = [
   { prefix: "/dashboard", permission: "dashboard:view" },
   { prefix: "/leads", permission: "leads:manage" },
   { prefix: "/shark-tank", permission: "leads:manage" },
+  { prefix: "/my-leads", permission: "leads:manage" },
   { prefix: "/dnc-hold", permission: "leads:manage" },
   { prefix: "/borrowers", permission: "borrowers:manage" },
   { prefix: "/pipeline", permission: "loans:manage" },

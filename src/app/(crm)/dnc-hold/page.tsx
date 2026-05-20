@@ -1,6 +1,7 @@
 import { LeadQueueTable } from "@/components/leads/lead-queue-table";
 import { mapLeadRow } from "@/lib/data/lead-mapping";
 import { hasSupabaseConfig } from "@/lib/env";
+import { runLeadWorkflowMaintenance } from "@/lib/leads/workflow-maintenance";
 import { createServerClient, getCurrentProfile } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function DncHoldPage() {
 }
 
 async function loadDncHoldLeads(supabase: ReturnType<typeof createServerClient>, ownerName: string, profileId: string, role: string) {
+  await runLeadWorkflowMaintenance(supabase);
   let query = supabase
     .from("leads")
     .select("*, owner:profiles!leads_owner_id_fkey(full_name), assigned:profiles!leads_assigned_to_fkey(full_name)")

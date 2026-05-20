@@ -145,7 +145,7 @@ export function LeadList({ initialLeads = leads }: { initialLeads?: typeof leads
                     <td className="px-3 py-4">
                       <Badge tone={statusTones[lead.status]}>{lead.status}</Badge>
                     </td>
-                    <td className="px-3 py-4 text-slate-700">{lead.assignedLoanOfficer}</td>
+                    <td className="px-3 py-4 text-slate-700">{assignmentLabel(lead)}</td>
                     <td className="px-3 py-4 text-slate-700">{lead.createdDate}</td>
                     <td className="px-3 py-4 text-slate-700">{lead.lastContactDate}</td>
                     <td className="px-3 py-4">
@@ -204,4 +204,13 @@ function Filter({ label, value, options, onChange }: { label: string; value: str
       </select>
     </div>
   );
+}
+
+function assignmentLabel(lead: (typeof leads)[number]) {
+  if (!lead.assignedTo) return "Unassigned";
+  if (!lead.assignmentExpiresAt) return lead.assignedToName ?? lead.assignedLoanOfficer;
+
+  const diff = new Date(lead.assignmentExpiresAt).getTime() - Date.now();
+  const days = Math.max(0, Math.ceil(diff / 86_400_000));
+  return `${lead.assignedToName ?? lead.assignedLoanOfficer} (${days} days left)`;
 }

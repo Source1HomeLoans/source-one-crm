@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Ban, Edit3, Eye, MessageSquare, Phone, UserCheck, UserPlus } from "lucide-react";
+import { Ban, Edit3, Eye, MessageSquare, Phone, RefreshCw, UserCheck, UserPlus } from "lucide-react";
 
-import { assignLeadToLoanOfficer, claimLead, logLeadCall, logLeadText, placeLeadOnDncHold, releaseDncHold } from "@/app/actions/leads";
+import { assignLeadToLoanOfficer, claimLead, convertLeadToBorrower, logLeadCall, logLeadText, placeLeadOnDncHold, releaseDncHold, returnLeadToSharkTank } from "@/app/actions/leads";
 import type { AppRole } from "@/lib/security/permissions";
 
 type LoanOfficerOption = {
@@ -27,6 +27,7 @@ export function LeadWorkflowActions({
   showClaim = false,
   showAssign = false,
   showRelease = false,
+  showReturn = false,
   compact = true
 }: {
   leadId: string;
@@ -38,6 +39,7 @@ export function LeadWorkflowActions({
   showClaim?: boolean;
   showAssign?: boolean;
   showRelease?: boolean;
+  showReturn?: boolean;
   compact?: boolean;
 }) {
   const [message, setMessage] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function LeadWorkflowActions({
   const canClaim = showClaim && !assignedTo && currentUserRole === "loan_officer";
   const canAssign = showAssign && currentUserRole === "admin";
   const canRelease = showRelease && currentUserRole === "admin";
+  const canReturn = showReturn && currentUserRole === "admin";
   const canContact = !isDncHold;
 
   function run(action: () => Promise<ActionResult>) {
@@ -109,6 +112,12 @@ export function LeadWorkflowActions({
         <Edit3 size={17} />
         {compact ? null : "Edit"}
       </Link>
+      {!isDncHold ? (
+        <button type="button" onClick={() => run(() => convertLeadToBorrower(leadId) as Promise<ActionResult>)} disabled={isPending} className={compact ? iconButtonClass : textButtonClass} aria-label="Convert to borrower">
+          <RefreshCw size={17} />
+          {compact ? null : "Convert"}
+        </button>
+      ) : null}
       <button type="button" onClick={() => run(() => placeLeadOnDncHold(leadId) as Promise<ActionResult>)} disabled={isPending || isDncHold} className={compact ? `${iconButtonClass} text-rose-700 hover:bg-rose-50` : `${textButtonClass} text-rose-700 ring-rose-200 hover:bg-rose-50`} aria-label="Place lead on DNC hold">
         <Ban size={17} />
         {compact ? null : "DNC"}
@@ -116,6 +125,11 @@ export function LeadWorkflowActions({
       {canRelease ? (
         <button type="button" onClick={() => run(() => releaseDncHold(leadId) as Promise<ActionResult>)} disabled={isPending} className={textButtonClass}>
           Release Hold
+        </button>
+      ) : null}
+      {canReturn ? (
+        <button type="button" onClick={() => run(() => returnLeadToSharkTank(leadId) as Promise<ActionResult>)} disabled={isPending} className={textButtonClass}>
+          Return to Shark Tank
         </button>
       ) : null}
       {message ? <span className="basis-full text-xs text-slate-600">{message}</span> : null}

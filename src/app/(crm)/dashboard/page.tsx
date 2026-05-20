@@ -7,11 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { leads } from "@/lib/data/leads";
 import { pipelineLoans } from "@/lib/data/pipeline";
 import { isDueToday, tasks } from "@/lib/data/tasks";
+import { hasSupabaseConfig } from "@/lib/env";
+import { runLeadWorkflowMaintenance } from "@/lib/leads/workflow-maintenance";
+import { createServerClient, getCurrentProfile } from "@/lib/supabase/server";
 import { currency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const profile = hasSupabaseConfig() ? await getCurrentProfile() : null;
+  if (profile) {
+    await runLeadWorkflowMaintenance(createServerClient());
+  }
+
   const newLeadsThisMonth = leads.filter((lead) => lead.createdDate.startsWith("2026-05")).length;
   const loansInPipeline = pipelineLoans.filter((loan) => !["Funded", "Lost"].includes(loan.status)).length;
   const fundedLoansThisMonth = pipelineLoans.filter((loan) => loan.status === "Funded").length;
