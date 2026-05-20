@@ -19,7 +19,7 @@ const items: NavItem[] = [
   { href: "/dnc-hold", label: "6 Month Hold", icon: Ban, permission: "leads:manage" },
   { href: "/borrowers", label: "Borrowers", icon: Home, permission: "borrowers:manage" },
   { href: "/pipeline", label: "Pipeline", icon: BarChart3, permission: "loans:manage" },
-  { href: "/partners", label: "Partners", icon: Handshake, permission: "partners:manage" },
+  { href: "/referral-partners", label: "Partners", icon: Handshake, permission: "partners:manage" },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone, permission: "campaigns:manage" },
   { href: "/tasks", label: "Tasks", icon: ClipboardList, permission: "tasks:manage" },
   { href: "/notes", label: "Notes", icon: StickyNote, permission: "notes:manage" },

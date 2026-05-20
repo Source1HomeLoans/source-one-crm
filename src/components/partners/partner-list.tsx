@@ -23,7 +23,7 @@ export function PartnerList({ initialPartners = partners }: { initialPartners?: 
           </p>
         </div>
         <Link
-          href="/partners/new"
+          href="/referral-partners/new"
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-brand-navy px-3 text-sm font-semibold text-white transition hover:bg-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2"
         >
           <Plus size={17} />
@@ -73,7 +73,7 @@ export function PartnerList({ initialPartners = partners }: { initialPartners?: 
                     <td className="max-w-[220px] truncate px-3 py-4 text-slate-700">{partner.followUpTask}</td>
                     <td className="px-3 py-4">
                       <Link
-                        href={`/partners/${partner.id}`}
+                        href={`/referral-partners/${partner.id}`}
                         className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-teal"
                         aria-label={`View ${partner.name}`}
                       >

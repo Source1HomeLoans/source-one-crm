@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 
-import { createPartner } from "@/app/actions/partners";
+import { updatePartner } from "@/app/actions/partners";
 import { Button } from "@/components/ui/button";
+import type { ReferralPartner } from "@/lib/data/partners";
+import { partnerStatusValue, partnerTypeValue } from "@/lib/data/partner-mapping";
 
 const partnerTypes = [
   ["realtor", "Realtor"],
@@ -25,7 +27,7 @@ const partnerStatuses = [
   ["inactive", "Inactive"]
 ];
 
-export function PartnerCreateForm() {
+export function PartnerEditForm({ partner }: { partner: ReferralPartner }) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
@@ -35,7 +37,7 @@ export function PartnerCreateForm() {
     setSaving(true);
     setMessage(null);
 
-    const result = await createPartner(new FormData(event.currentTarget));
+    const result = await updatePartner(partner.id, new FormData(event.currentTarget));
     setSaving(false);
 
     if (!result.ok) {
@@ -45,24 +47,24 @@ export function PartnerCreateForm() {
     }
 
     setMessage({ type: "success", text: result.message });
-    router.push("/referral-partners");
     router.refresh();
+    router.push(`/referral-partners/${partner.id}`);
   }
 
   return (
     <form onSubmit={handleSubmit} className="grid max-w-full gap-4 md:grid-cols-2">
-      <Field label="Name" name="contact_name" required />
-      <Field label="Company" name="company_name" required />
-      <Field label="Phone" name="phone" />
-      <Field label="Email" name="email" type="email" />
-      <Select label="Partner type" name="partner_type" options={partnerTypes} defaultValue="realtor" />
-      <Field label="Market/city" name="market_city" />
-      <Select label="Status" name="status" options={partnerStatuses} defaultValue="prospect" />
-      <Field label="Referrals sent" name="referrals_sent" type="number" defaultValue="0" />
-      <Field label="Last contacted" name="last_touch_at" type="date" />
-      <Field label="Follow-up due" name="follow_up_due_at" type="date" />
+      <Field label="Name" name="contact_name" defaultValue={partner.name} required />
+      <Field label="Company" name="company_name" defaultValue={partner.company} required />
+      <Field label="Phone" name="phone" defaultValue={partner.phone} />
+      <Field label="Email" name="email" type="email" defaultValue={partner.email} />
+      <Select label="Partner type" name="partner_type" options={partnerTypes} defaultValue={partnerTypeValue(partner.partnerType)} />
+      <Field label="Market/city" name="market_city" defaultValue={partner.marketCity} />
+      <Select label="Status" name="status" options={partnerStatuses} defaultValue={partnerStatusValue(partner.status)} />
+      <Field label="Referrals sent" name="referrals_sent" type="number" defaultValue={partner.referralsSent.toString()} />
+      <Field label="Last contacted" name="last_touch_at" type="date" defaultValue={partner.lastContactedDate === "Not contacted" ? "" : partner.lastContactedDate} />
+      <Field label="Follow-up due" name="follow_up_due_at" type="date" defaultValue={partner.followUpDueDate} />
       <div className="md:col-span-2">
-        <Field label="Follow-up task" name="follow_up_task" />
+        <Field label="Follow-up task" name="follow_up_task" defaultValue={partner.followUpTask} />
       </div>
       <div className="md:col-span-2">
         <label className="text-sm font-medium text-slate-700" htmlFor="notes">
@@ -72,6 +74,7 @@ export function PartnerCreateForm() {
           id="notes"
           name="notes"
           rows={5}
+          defaultValue={partner.notes}
           className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
         />
       </div>
@@ -90,7 +93,19 @@ export function PartnerCreateForm() {
   );
 }
 
-function Field({ label, name, type = "text", required, defaultValue }: { label: string; name: string; type?: string; required?: boolean; defaultValue?: string }) {
+function Field({
+  label,
+  name,
+  type = "text",
+  required,
+  defaultValue
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  required?: boolean;
+  defaultValue?: string;
+}) {
   return (
     <div className="min-w-0">
       <label className="text-sm font-medium text-slate-700" htmlFor={name}>

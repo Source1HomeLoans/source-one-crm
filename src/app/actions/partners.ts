@@ -57,6 +57,7 @@ export async function createPartner(formData: FormData) {
   if (error) return failure(error.message);
 
   revalidatePath("/partners");
+  revalidatePath("/referral-partners");
   return { ...success("Referral partner created."), id: (data as { id?: string } | null)?.id };
 }
 
@@ -72,5 +73,8 @@ export async function updatePartner(partnerId: string, formData: FormData) {
 
   revalidatePath("/partners");
   revalidatePath(`/partners/${partnerId}`);
+  revalidatePath("/referral-partners");
+  revalidatePath(`/referral-partners/${partnerId}`);
+  revalidatePath(`/referral-partners/${partnerId}/edit`);
   return success("Referral partner updated.");
 }

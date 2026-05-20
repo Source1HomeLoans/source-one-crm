@@ -9,6 +9,7 @@ const routePermissions: Array<{ prefix: string; permission: Permission }> = [
   { prefix: "/borrowers", permission: "borrowers:manage" },
   { prefix: "/pipeline", permission: "loans:manage" },
   { prefix: "/partners", permission: "partners:manage" },
+  { prefix: "/referral-partners", permission: "partners:manage" },
   { prefix: "/campaigns", permission: "campaigns:manage" },
   { prefix: "/tasks", permission: "tasks:manage" },
   { prefix: "/notes", permission: "notes:manage" },
