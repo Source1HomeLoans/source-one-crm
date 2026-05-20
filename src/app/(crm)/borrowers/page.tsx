@@ -88,7 +88,10 @@ export default async function BorrowersPage() {
       communications: [],
       archivedAt: row.archived_at ? String(row.archived_at) : null,
       deletedAt: row.deleted_at ? String(row.deleted_at) : null,
-      borrowerStatus: String(row.borrower_status ?? "file_started")
+      borrowerStatus: String(row.borrower_status ?? "file_started"),
+      ariveStatus: row.arive_status ? String(row.arive_status) : null,
+      ariveSentAt: row.arive_sent_at ? String(row.arive_sent_at) : null,
+      ariveReferenceId: row.arive_reference_id ? String(row.arive_reference_id) : null
     };
   });
 

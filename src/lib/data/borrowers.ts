@@ -61,6 +61,9 @@ export type BorrowerProfile = {
   borrowerStatus?: string;
   borrowerStatusLabel?: string;
   linkedLeadStatus?: string | null;
+  ariveStatus?: string | null;
+  ariveSentAt?: string | null;
+  ariveReferenceId?: string | null;
 };
 
 export const loanPrograms: LoanProgram[] = [

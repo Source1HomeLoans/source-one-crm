@@ -203,6 +203,47 @@ export async function deleteBorrower(borrowerId: string) {
   return success("Borrower deleted.");
 }
 
+export async function sendBorrowerToArive(borrowerId: string) {
+  const auth = await requirePermission("borrowers:manage");
+  if (auth.error || !auth.supabase || !auth.profile) return auth.error;
+
+  const sentAt = new Date().toISOString();
+  const ariveReferenceId = `ARIVE-${borrowerId.slice(0, 8).toUpperCase()}`;
+  const { error } = await auth.supabase
+    .from("borrowers")
+    .update({
+      arive_status: "sent",
+      arive_sent_at: sentAt,
+      arive_reference_id: ariveReferenceId,
+      arive_last_error: null
+    })
+    .eq("id", borrowerId);
+
+  if (error) return failure(error.message);
+
+  await auth.supabase.from("user_activity_events").insert({
+    actor_id: auth.profile.id,
+    event_type: "Borrower sent to ARIVE",
+    entity_table: "borrowers",
+    entity_id: borrowerId,
+    metadata: { arive_reference_id: ariveReferenceId }
+  });
+
+  await auth.supabase.from("communication_history").insert({
+    owner_id: auth.profile.id,
+    borrower_id: borrowerId,
+    channel: "system_update",
+    direction: "system",
+    subject: "Borrower sent to ARIVE",
+    summary: `Borrower sent to ARIVE (${ariveReferenceId})`,
+    occurred_at: sentAt
+  });
+
+  revalidatePath("/borrowers");
+  revalidatePath(`/borrowers/${borrowerId}`);
+  return success("Borrower sent to ARIVE.");
+}
+
 async function writeBorrowerLifecycleActivity(borrowerId: string, actorId: string, eventType: "Record archived" | "Record deleted") {
   const auth = await requirePermission("activity:view");
   if (auth.error || !auth.supabase) return;

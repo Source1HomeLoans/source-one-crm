@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Edit3 } from "lucide-react";
 
 import { BorrowerProfile } from "@/components/borrowers/borrower-profile";
+import { SendToAriveButton } from "@/components/borrowers/send-to-arive-button";
 import { ArchiveDeleteActions } from "@/components/records/archive-delete-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,6 +67,7 @@ export default async function BorrowerProfilePage({ params }: { params: { borrow
             <Edit3 size={17} />
             Edit borrower
           </Link>
+          <SendToAriveButton borrowerId={borrower.id} alreadySent={borrower.ariveStatus === "sent"} />
           <ArchiveDeleteActions recordId={borrower.id} recordType="borrower" returnHref="/borrowers" compact={false} />
         </div>
       </div>
@@ -75,6 +77,7 @@ export default async function BorrowerProfilePage({ params }: { params: { borrow
           <span className="text-sm font-semibold text-brand-ink">Linked statuses</span>
           <Badge tone="blue">Lead: {linkedLeadStatus ?? "No linked lead"}</Badge>
           <Badge tone="green">Borrower: {(borrower as BorrowerProfileData & { borrowerStatusLabel?: string }).borrowerStatusLabel ?? "File Started"}</Badge>
+          <Badge tone={borrower.ariveStatus === "sent" ? "green" : "slate"}>ARIVE: {borrower.ariveStatus === "sent" ? `Sent ${formatDate(borrower.ariveSentAt)}` : "Not sent"}</Badge>
         </CardContent>
       </Card>
 
@@ -143,12 +146,19 @@ function mapBorrower(row: Record<string, string | number | boolean | null>, owne
     archivedAt: row.archived_at ? String(row.archived_at) : null,
     deletedAt: row.deleted_at ? String(row.deleted_at) : null,
     borrowerStatus: String(row.borrower_status ?? "file_started"),
-    borrowerStatusLabel: statusLabel(String(row.borrower_status ?? "file_started"))
+    borrowerStatusLabel: statusLabel(String(row.borrower_status ?? "file_started")),
+    ariveStatus: row.arive_status ? String(row.arive_status) : null,
+    ariveSentAt: row.arive_sent_at ? String(row.arive_sent_at) : null,
+    ariveReferenceId: row.arive_reference_id ? String(row.arive_reference_id) : null
   } as BorrowerProfileData & { borrowerStatus: string; borrowerStatusLabel: string };
 }
 
 function statusLabel(status: string) {
   return status.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatDate(value?: string | null) {
+  return value ? value.slice(0, 10) : "Not sent";
 }
 
 function BorrowerNotFound() {

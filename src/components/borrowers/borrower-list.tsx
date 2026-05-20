@@ -62,7 +62,7 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
             <table className="w-full min-w-[860px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-                  {["Borrower", "Email", "Phone", "Credit", "Loan Program", "Loan Amount", "Officer", "Actions"].map((column) => (
+                  {["Borrower", "Email", "Phone", "Credit", "Loan Program", "Loan Amount", "ARIVE", "Officer", "Actions"].map((column) => (
                     <th key={column} className="px-3 py-3 font-semibold">
                       {column}
                     </th>
@@ -82,6 +82,9 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
                       <Badge tone="blue">{borrower.loanProgram.selected}</Badge>
                     </td>
                     <td className="px-3 py-4 text-slate-700">${borrower.loanScenario.loanAmount.toLocaleString()}</td>
+                    <td className="px-3 py-4">
+                      <Badge tone={borrower.ariveStatus === "sent" ? "green" : "slate"}>{borrower.ariveStatus === "sent" ? "Sent" : "Not sent"}</Badge>
+                    </td>
                     <td className="px-3 py-4 text-slate-700">{borrower.assignedLoanOfficer}</td>
                     <td className="px-3 py-4">
                       <div className="flex gap-2">
