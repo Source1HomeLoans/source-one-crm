@@ -6,15 +6,19 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          navy: "#113A5C",
-          blue: "#1E6E9E",
-          teal: "#2F9C95",
-          gold: "#C89135",
-          ink: "#172433"
+          navy: "#0B1F3A",
+          dark: "#081526",
+          blue: "#14365F",
+          teal: "#C8A44D",
+          gold: "#C8A44D",
+          lightGold: "#E5C97A",
+          cream: "#FBF8EF",
+          ink: "#111827"
         }
       },
       boxShadow: {
-        panel: "0 14px 44px rgba(23, 36, 51, 0.08)"
+        panel: "0 18px 50px rgba(8, 21, 38, 0.08)",
+        luxury: "0 22px 70px rgba(8, 21, 38, 0.14)"
       }
     }
   },

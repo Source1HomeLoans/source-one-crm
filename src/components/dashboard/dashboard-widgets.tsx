@@ -54,7 +54,7 @@ function Widget({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Icon size={18} className="text-brand-blue" />
+          <Icon size={18} className="text-brand-gold" />
           <CardTitle>{title}</CardTitle>
         </div>
         <Badge tone={tone}>{count}</Badge>
@@ -67,7 +67,7 @@ function Widget({
 function WidgetRow({ primary, secondary }: { primary: string; secondary: string }) {
   return (
     <div className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-      <p className="truncate text-sm font-semibold text-brand-ink">{primary}</p>
+      <p className="truncate text-sm font-semibold text-brand-navy">{primary}</p>
       <p className="mt-1 text-xs text-slate-500">{secondary}</p>
     </div>
   );

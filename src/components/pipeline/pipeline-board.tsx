@@ -98,7 +98,8 @@ export function PipelineBoard() {
     <div className="max-w-full space-y-5 overflow-x-hidden">
       <div className="flex min-w-0 flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div className="min-w-0">
-          <h2 className="text-2xl font-semibold text-brand-ink">Loan Pipeline</h2>
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand-gold">ARIVE-ready loan files</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-brand-navy">Loan Pipeline</h2>
           <p className="mt-1 max-w-3xl break-words text-sm text-slate-600">
             Track every active borrower file as a compact milestone checklist with clear next-step actions.
           </p>
@@ -157,11 +158,11 @@ function LoanMilestoneCard({
   const canMoveNext = loan.status !== "Funded" && loan.status !== "Lost / Withdrawn";
 
   return (
-    <Card className="flex min-w-0 flex-col">
+    <Card className="flex min-w-0 flex-col overflow-hidden">
       <CardHeader className="space-y-3">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="break-words text-base font-semibold text-brand-ink">{loan.borrowerName}</h3>
+            <h3 className="break-words text-base font-semibold tracking-tight text-brand-navy">{loan.borrowerName}</h3>
             <p className="mt-1 break-words text-sm text-slate-500">
               {loan.loanType} - {currency(loan.loanAmount)}
             </p>
@@ -170,7 +171,7 @@ function LoanMilestoneCard({
         </div>
         <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
           <span className="flex min-w-0 items-center gap-2">
-            <UserRound size={16} className="shrink-0 text-brand-blue" />
+            <UserRound size={16} className="shrink-0 text-brand-gold" />
             <span className="truncate">{loan.assignedLoanOfficer}</span>
           </span>
           <span className="flex min-w-0 items-center gap-2">
@@ -192,7 +193,7 @@ function LoanMilestoneCard({
                   className={cn(
                     "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px]",
                     status === "completed" && "border-emerald-500 bg-emerald-500 text-white",
-                    status === "current" && "border-blue-500 bg-blue-50 text-blue-700",
+                    status === "current" && "border-brand-gold bg-brand-gold/15 text-brand-dark",
                     status === "problem" && "border-rose-500 bg-rose-50 text-rose-700",
                     status === "not-started" && "border-slate-300 bg-white text-slate-400"
                   )}
@@ -201,7 +202,7 @@ function LoanMilestoneCard({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-start justify-between gap-2">
-                    <p className="break-words text-sm font-semibold text-brand-ink">{stage}</p>
+                    <p className="break-words text-sm font-semibold text-brand-navy">{stage}</p>
                     {completedDate ? <span className="shrink-0 text-xs text-slate-500">{completedDate}</span> : null}
                   </div>
                 </div>
@@ -276,9 +277,9 @@ function FilterSelect({
 
 function Summary({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="min-w-0 rounded-lg border border-brand-gold/20 bg-white px-4 py-3 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 break-words text-xl font-semibold text-brand-ink">{value}</p>
+      <p className="mt-1 break-words text-xl font-semibold text-brand-navy">{value}</p>
     </div>
   );
 }

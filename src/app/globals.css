@@ -4,13 +4,34 @@
 
 :root {
   color-scheme: light;
+  --crm-page: #f6f7f9;
+  --crm-card: #ffffff;
+  --crm-ink: #111827;
+  --crm-muted: #64748b;
+  --crm-border: #e2e8f0;
+  --crm-navy: #0b1f3a;
+  --crm-dark-navy: #081526;
+  --crm-gold: #c8a44d;
+  --crm-light-gold: #e5c97a;
+}
+
+.dark {
+  color-scheme: dark;
+  --crm-page: #081526;
+  --crm-card: #0b1f3a;
+  --crm-ink: #f8fafc;
+  --crm-muted: #cbd5e1;
+  --crm-border: rgba(229, 201, 122, 0.18);
 }
 
 body {
-  background: #f5f7f8;
-  color: #172433;
+  background:
+    radial-gradient(circle at top left, rgba(200, 164, 77, 0.12), transparent 30rem),
+    linear-gradient(180deg, #ffffff 0%, var(--crm-page) 18rem);
+  color: var(--crm-ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   overflow-x: hidden;
+  text-rendering: geometricPrecision;
 }
 
 * {
@@ -19,4 +40,28 @@ body {
 
 html {
   overflow-x: hidden;
+}
+
+@layer base {
+  input,
+  select,
+  textarea {
+    @apply max-w-full border-slate-300 text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20;
+  }
+
+  table {
+    @apply max-w-full;
+  }
+
+  thead {
+    @apply bg-slate-50/80;
+  }
+
+  th {
+    @apply whitespace-nowrap;
+  }
+
+  td {
+    @apply align-middle;
+  }
 }

@@ -135,7 +135,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
 
   return (
     <form onSubmit={handleAuth} className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 rounded-md bg-slate-100 p-1 text-sm">
+      <div className="grid grid-cols-3 gap-2 rounded-md bg-brand-cream p-1 text-sm">
         {[
           { id: "signin", label: "Sign in", icon: LogIn },
           { id: "signup", label: "Sign up", icon: UserPlus },
@@ -147,7 +147,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
             <button
               key={item.id}
               type="button"
-              className={`flex min-h-10 items-center justify-center gap-1 rounded px-2 font-medium ${active ? "bg-white text-brand-ink shadow-sm" : "text-slate-500"}`}
+              className={`flex min-h-10 items-center justify-center gap-1 rounded px-2 font-semibold ${active ? "bg-brand-navy text-brand-gold shadow-sm" : "text-slate-500 hover:text-brand-navy"}`}
               onClick={() => {
                 setMode(item.id as typeof mode);
                 setError(null);
@@ -172,7 +172,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+          className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20"
         />
       </div>
       {mode !== "reset" ? (
@@ -188,7 +188,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
           minLength={6}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+          className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/20"
         />
       </div>
       ) : null}
@@ -201,7 +201,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
       {mode === "signin" ? (
         <button
           type="button"
-          className="w-full text-center text-sm font-semibold text-brand-blue hover:text-brand-navy"
+          className="w-full text-center text-sm font-semibold text-brand-navy hover:text-brand-gold"
           onClick={() => {
             setMode("reset");
             setError(null);
@@ -216,7 +216,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
           type="button"
           onClick={resendConfirmation}
           disabled={loading}
-          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-brand-ink ring-1 ring-slate-200 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-brand-navy ring-1 ring-brand-gold/30 transition hover:bg-brand-cream focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {message?.startsWith("Check your email") ? <MailCheck size={17} /> : <RefreshCw size={17} />}
           Resend confirmation email

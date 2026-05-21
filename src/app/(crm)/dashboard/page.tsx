@@ -34,8 +34,28 @@ export default async function DashboardPage() {
   const recentLeads = [...leads].sort((a, b) => b.createdDate.localeCompare(a.createdDate)).slice(0, 5);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+    <div className="max-w-full space-y-6 overflow-x-hidden">
+      <div className="rounded-xl bg-brand-dark p-5 text-white shadow-luxury md:p-6">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand-lightGold">Source One executive view</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white md:text-3xl">Management Dashboard</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">Company-level visibility into lead flow, pipeline movement, funded volume, and follow-up risk.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary">
+              <PhoneCall size={17} />
+              Log Call
+            </Button>
+            <Button>
+              <Plus size={17} />
+              New Lead
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="hidden flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h2 className="text-2xl font-semibold text-brand-ink">Management Dashboard</h2>
           <p className="mt-1 text-sm text-slate-600">Company-level visibility into lead flow, pipeline movement, funded volume, and follow-up risk.</p>
@@ -158,14 +178,14 @@ function Metric({
   tone: "blue" | "green" | "gold" | "red";
 }) {
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardContent className="flex gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand-teal/10 text-brand-teal">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand-navy text-brand-gold">
           <Icon size={19} />
         </div>
         <div className="min-w-0">
           <Badge tone={tone}>{title}</Badge>
-          <p className="mt-3 text-2xl font-semibold text-brand-ink">{value}</p>
+          <p className="mt-3 text-2xl font-semibold tracking-tight text-brand-navy">{value}</p>
           <p className="mt-1 text-sm text-slate-500">{detail}</p>
         </div>
       </CardContent>
@@ -183,7 +203,7 @@ function BarRow({ label, value, max }: { label: string; value: number; max: numb
         <span className="text-slate-500">{value}</span>
       </div>
       <div className="h-3 rounded-full bg-slate-100">
-        <div className="h-3 rounded-full bg-brand-blue" style={{ width: `${width}%` }} />
+        <div className="h-3 rounded-full bg-brand-gold" style={{ width: `${width}%` }} />
       </div>
     </div>
   );

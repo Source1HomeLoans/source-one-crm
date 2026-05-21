@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Ban, BarChart3, Cable, ClipboardList, Download, FileUp, Handshake, Home, LayoutDashboard, Megaphone, MessageSquareText, Settings, ShieldCheck, StickyNote, Users, Waves, type LucideIcon } from "lucide-react";
 
 import { can, type AppRole } from "@/lib/security/permissions";
@@ -32,22 +35,27 @@ const items: NavItem[] = [
 ];
 
 export function SidebarNav({ role }: { role: AppRole }) {
+  const pathname = usePathname();
   const visibleItems = items.filter((item) => can(role, item.permission));
 
   return (
-    <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-1 lg:overflow-visible lg:p-4">
+    <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-1.5 lg:overflow-visible lg:p-4">
       {visibleItems.map((item) => {
         const Icon = item.icon;
+        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
           <Link
             key={item.href}
             href={item.href}
             className={cn(
-              "flex min-w-max items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-brand-ink",
-              "focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2"
+              "group flex min-w-max items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold transition",
+              "focus:outline-none focus:ring-2 focus:ring-brand-gold focus:ring-offset-2 focus:ring-offset-brand-dark",
+              isActive
+                ? "bg-brand-gold text-brand-dark shadow-sm"
+                : "text-slate-200/85 hover:bg-white/10 hover:text-white"
             )}
           >
-            <Icon size={18} className="text-brand-blue" />
+            <Icon size={18} className={cn(isActive ? "text-brand-dark" : "text-brand-lightGold group-hover:text-brand-lightGold")} />
             {item.label}
           </Link>
         );
