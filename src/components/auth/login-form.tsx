@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, LogIn, UserPlus } from "lucide-react";
+import { KeyRound, LogIn, MailCheck, RefreshCw, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 const authErrorMessages: Record<string, string> = {
   profile_missing: "Your login worked, but no CRM profile exists for this user yet. Ask an admin to create your profile row in Supabase with the correct role.",
-  missing_auth_code: "The auth callback did not include a confirmation code. Try the email link again or request a new link."
+  missing_auth_code: "The auth callback did not include a confirmation code. Try the email link again or request a new link.",
+  email_not_confirmed: "Please confirm your email before signing in. Use the button below to resend the confirmation email."
 };
 
 type LoginFormProps = {
@@ -21,13 +22,20 @@ export function LoginForm({ initialError }: LoginFormProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(initialError ? authErrorMessages[initialError] ?? initialError : null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showResend, setShowResend] = useState(initialError === "email_not_confirmed");
   const [loading, setLoading] = useState(false);
+
+  function authRedirectTo(next = "/dashboard") {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    return `${siteUrl.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(next)}`;
+  }
 
   async function handleAuth(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
     setMessage(null);
+    setShowResend(false);
 
     if (!email.trim()) {
       setError("Enter your email address.");
@@ -42,7 +50,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
     }
 
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard`;
+    const redirectTo = mode === "reset" ? authRedirectTo("/reset-password") : authRedirectTo();
     const result =
       mode === "signin"
         ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
@@ -52,13 +60,20 @@ export function LoginForm({ initialError }: LoginFormProps) {
     const { error: authError } = result;
 
     if (authError) {
-      setError(authError.message);
+      const normalized = authError.message.toLowerCase();
+      if (normalized.includes("email not confirmed") || normalized.includes("not confirmed") || normalized.includes("confirm")) {
+        setError("Please confirm your email before signing in. Use the button below to resend the confirmation email.");
+        setShowResend(true);
+      } else {
+        setError(authError.message);
+      }
       setLoading(false);
       return;
     }
 
     if (mode === "signup") {
-      setMessage("Signup submitted. Check your email to confirm the account, then sign in. An admin must also create your CRM profile and role.");
+      setMessage("Check your email to confirm your account.");
+      setShowResend(true);
       setLoading(false);
       return;
     }
@@ -74,12 +89,48 @@ export function LoginForm({ initialError }: LoginFormProps) {
     } = await supabase.auth.getSession();
 
     if (!session) {
-      setError("Login completed, but the browser did not receive a session. Check Supabase Auth URL settings and cookies, then try again.");
+      setError("Please confirm your email before signing in. Use the button below to resend the confirmation email.");
+      setShowResend(true);
+      setLoading(false);
+      return;
+    }
+
+    if (!session.user.email_confirmed_at) {
+      await supabase.auth.signOut();
+      setError("Please confirm your email before signing in. Use the button below to resend the confirmation email.");
+      setShowResend(true);
       setLoading(false);
       return;
     }
 
     window.location.assign("/dashboard");
+  }
+
+  async function resendConfirmation() {
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+
+    if (!email.trim()) {
+      setError("Enter your email address, then resend confirmation.");
+      setLoading(false);
+      return;
+    }
+
+    const supabase = createClient();
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: authRedirectTo() }
+    });
+
+    if (resendError) {
+      setError(resendError.message);
+    } else {
+      setMessage("Confirmation email resent. Check your inbox.");
+    }
+
+    setLoading(false);
   }
 
   return (
@@ -101,6 +152,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
                 setMode(item.id as typeof mode);
                 setError(null);
                 setMessage(null);
+                setShowResend(false);
               }}
             >
               <Icon size={16} />
@@ -146,6 +198,30 @@ export function LoginForm({ initialError }: LoginFormProps) {
         {mode === "signin" ? <LogIn size={17} /> : mode === "signup" ? <UserPlus size={17} /> : <KeyRound size={17} />}
         {loading ? "Working" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
       </Button>
+      {mode === "signin" ? (
+        <button
+          type="button"
+          className="w-full text-center text-sm font-semibold text-brand-blue hover:text-brand-navy"
+          onClick={() => {
+            setMode("reset");
+            setError(null);
+            setMessage(null);
+          }}
+        >
+          Forgot password?
+        </button>
+      ) : null}
+      {showResend ? (
+        <button
+          type="button"
+          onClick={resendConfirmation}
+          disabled={loading}
+          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-white px-3 text-sm font-semibold text-brand-ink ring-1 ring-slate-200 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-teal focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {message?.startsWith("Check your email") ? <MailCheck size={17} /> : <RefreshCw size={17} />}
+          Resend confirmation email
+        </button>
+      ) : null}
     </form>
   );
 }

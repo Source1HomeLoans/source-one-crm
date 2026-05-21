@@ -18,14 +18,25 @@ export async function middleware(request: NextRequest) {
   const isLogin = request.nextUrl.pathname.startsWith("/login");
   const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
   const hasLoginError = Boolean(request.nextUrl.searchParams.get("auth_error"));
-  const isPublicRoute = isLogin || isAuthCallback || request.nextUrl.pathname === "/" || request.nextUrl.pathname.startsWith("/privacy") || request.nextUrl.pathname.startsWith("/terms");
+  const isResetPassword = request.nextUrl.pathname.startsWith("/reset-password");
+  const isPublicRoute = isLogin || isAuthCallback || isResetPassword || request.nextUrl.pathname === "/" || request.nextUrl.pathname.startsWith("/privacy") || request.nextUrl.pathname.startsWith("/terms");
   const isCrmRoute = !isPublicRoute;
 
   if (!session && isCrmRoute) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  if (session && !session.user.email_confirmed_at && isCrmRoute) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(new URL("/login?auth_error=email_not_confirmed", request.url));
+  }
+
   if (session && isLogin && !hasLoginError) {
+    if (!session.user.email_confirmed_at) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL("/login?auth_error=email_not_confirmed", request.url));
+    }
+
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
 
     if (!profile?.role) {
