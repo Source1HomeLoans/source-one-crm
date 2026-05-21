@@ -26,17 +26,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (session && !session.user.email_confirmed_at && isCrmRoute) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(new URL("/login?auth_error=email_not_confirmed", request.url));
-  }
-
   if (session && isLogin && !hasLoginError) {
-    if (!session.user.email_confirmed_at) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(new URL("/login?auth_error=email_not_confirmed", request.url));
-    }
-
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
 
     if (!profile?.role) {
