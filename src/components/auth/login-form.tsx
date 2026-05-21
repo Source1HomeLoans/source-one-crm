@@ -6,10 +6,13 @@ import { LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
+const AUTH_EMAIL_VERIFICATION_ENABLED = false;
+const PASSWORD_RESET_ENABLED = false;
+
 const authErrorMessages: Record<string, string> = {
   profile_missing: "Your login worked, but no CRM profile exists for this user yet. Ask an admin to create your profile row in Supabase with the correct role.",
-  missing_auth_code: "The auth callback did not include a confirmation code. Try signing in again.",
-  email_not_confirmed: "Email confirmation is disabled in the CRM while SMTP is being configured. If this continues, disable email confirmation in Supabase Auth settings."
+  missing_auth_code: "The auth callback did not include the required code. Try signing in again.",
+  email_not_confirmed: "Email verification is currently disabled for the CRM. Please try signing in again."
 };
 
 type LoginFormProps = {
@@ -50,18 +53,19 @@ export function LoginForm({ initialError }: LoginFormProps) {
     const supabase = createClient();
     const trimmedEmail = email.trim();
     const redirectTo = mode === "reset" ? authRedirectTo("/reset-password") : authRedirectTo();
+    const signUpOptions = AUTH_EMAIL_VERIFICATION_ENABLED ? { emailRedirectTo: redirectTo } : undefined;
     const result =
       mode === "signin"
         ? await supabase.auth.signInWithPassword({ email: trimmedEmail, password })
         : mode === "signup"
-          ? await supabase.auth.signUp({ email: trimmedEmail, password, options: { emailRedirectTo: redirectTo } })
+          ? await supabase.auth.signUp({ email: trimmedEmail, password, ...(signUpOptions ? { options: signUpOptions } : {}) })
           : await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo });
     const { error: authError } = result;
 
     if (authError) {
       setError(
         authError.message.toLowerCase().includes("confirm")
-          ? "Supabase email confirmation is still enabled. Disable email confirmation in Supabase Auth settings while SMTP is not configured, then sign in again."
+          ? "Supabase did not return an active login session. Please try signing in again."
           : authError.message
       );
       setLoading(false);
@@ -83,7 +87,7 @@ export function LoginForm({ initialError }: LoginFormProps) {
       if (signInError) {
         setError(
           signInError.message.toLowerCase().includes("confirm")
-            ? "Account created, but Supabase email confirmation is still enabled. Disable email confirmation in Supabase Auth settings while SMTP is not configured, then sign in again."
+            ? "Account created, but Supabase did not return an active login session. Please try signing in again."
             : signInError.message
         );
         setLoading(false);
@@ -118,7 +122,8 @@ export function LoginForm({ initialError }: LoginFormProps) {
       <div className="grid grid-cols-2 gap-2 rounded-md bg-brand-cream p-1 text-sm">
         {[
           { id: "signin", label: "Sign in", icon: LogIn },
-          { id: "signup", label: "Sign up", icon: UserPlus }
+          { id: "signup", label: "Sign up", icon: UserPlus },
+          ...(PASSWORD_RESET_ENABLED ? [{ id: "reset", label: "Reset", icon: LogIn }] : [])
         ].map((item) => {
           const Icon = item.icon;
           const active = mode === item.id;
