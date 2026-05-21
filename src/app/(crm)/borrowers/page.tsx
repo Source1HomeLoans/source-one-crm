@@ -91,7 +91,12 @@ export default async function BorrowersPage() {
       borrowerStatus: String(row.borrower_status ?? "file_started"),
       ariveStatus: row.arive_status ? String(row.arive_status) : null,
       ariveSentAt: row.arive_sent_at ? String(row.arive_sent_at) : null,
-      ariveReferenceId: row.arive_reference_id ? String(row.arive_reference_id) : null
+      ariveReferenceId: row.arive_reference_id ? String(row.arive_reference_id) : null,
+      ariveLoanId: row.arive_loan_id ? String(row.arive_loan_id) : null,
+      ariveSyncStatus: row.arive_sync_status ? String(row.arive_sync_status) : row.arive_status ? String(row.arive_status) : "not_synced",
+      ariveLastSyncedAt: row.arive_last_synced_at ? String(row.arive_last_synced_at) : null,
+      ariveSyncError: row.arive_sync_error ? String(row.arive_sync_error) : null,
+      sentToAriveAt: row.sent_to_arive_at ? String(row.sent_to_arive_at) : row.arive_sent_at ? String(row.arive_sent_at) : null
     };
   });
 

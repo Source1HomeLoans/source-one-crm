@@ -64,6 +64,11 @@ export type BorrowerProfile = {
   ariveStatus?: string | null;
   ariveSentAt?: string | null;
   ariveReferenceId?: string | null;
+  ariveLoanId?: string | null;
+  ariveSyncStatus?: "not_synced" | "pending" | "sent" | "synced" | "error" | string | null;
+  ariveLastSyncedAt?: string | null;
+  ariveSyncError?: string | null;
+  sentToAriveAt?: string | null;
 };
 
 export const loanPrograms: LoanProgram[] = [

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ban, BarChart3, ClipboardList, Download, FileUp, Handshake, Home, LayoutDashboard, Megaphone, MessageSquareText, Settings, ShieldCheck, StickyNote, Users, Waves, type LucideIcon } from "lucide-react";
+import { Ban, BarChart3, Cable, ClipboardList, Download, FileUp, Handshake, Home, LayoutDashboard, Megaphone, MessageSquareText, Settings, ShieldCheck, StickyNote, Users, Waves, type LucideIcon } from "lucide-react";
 
 import { can, type AppRole } from "@/lib/security/permissions";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ const items: NavItem[] = [
   { href: "/files", label: "Files", icon: FileUp, permission: "documents:view" },
   { href: "/export", label: "Export", icon: Download, permission: "data:export" },
   { href: "/compliance", label: "Compliance", icon: ShieldCheck, permission: "compliance:view" },
+  { href: "/integrations/arive", label: "ARIVE", icon: Cable, permission: "admin:manage" },
   { href: "/admin", label: "Admin", icon: Settings, permission: "admin:manage" }
 ];
 

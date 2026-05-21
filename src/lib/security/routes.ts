@@ -20,6 +20,7 @@ const routePermissions: Array<{ prefix: string; permission: Permission }> = [
   { prefix: "/documents", permission: "documents:view" },
   { prefix: "/programs", permission: "programs:manage" },
   { prefix: "/audit-logs", permission: "audit:view" },
+  { prefix: "/integrations", permission: "admin:manage" },
   { prefix: "/admin", permission: "admin:manage" }
 ];
 

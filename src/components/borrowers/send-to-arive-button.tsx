@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { sendBorrowerToArive } from "@/app/actions/borrowers";
 import { cn } from "@/lib/utils";
 
 type ActionResult = { ok: boolean; message: string };
@@ -12,10 +11,12 @@ type ActionResult = { ok: boolean; message: string };
 export function SendToAriveButton({
   borrowerId,
   alreadySent,
+  hasError,
   className
 }: {
   borrowerId: string;
   alreadySent?: boolean;
+  hasError?: boolean;
   className?: string;
 }) {
   const router = useRouter();
@@ -25,7 +26,12 @@ export function SendToAriveButton({
   function runAction() {
     setMessage(null);
     startTransition(async () => {
-      const result = (await sendBorrowerToArive(borrowerId)) as ActionResult;
+      const response = await fetch("/api/integrations/arive/send", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ borrowerId })
+      });
+      const result = (await response.json().catch(() => ({ ok: false, message: "ARIVE request failed." }))) as ActionResult;
       setMessage(result.message);
       if (result.ok) router.refresh();
     });
@@ -43,7 +49,7 @@ export function SendToAriveButton({
         )}
       >
         <Send size={17} />
-        {alreadySent ? "Sent to ARIVE" : isPending ? "Sending to ARIVE" : "Send to ARIVE"}
+        {alreadySent ? "Synced to ARIVE" : isPending ? "Sending to ARIVE" : hasError ? "Retry ARIVE Sync" : "Send to ARIVE"}
       </button>
       {message ? <span className="text-xs text-slate-600">{message}</span> : null}
     </div>

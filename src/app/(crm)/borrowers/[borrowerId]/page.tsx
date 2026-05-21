@@ -67,7 +67,7 @@ export default async function BorrowerProfilePage({ params }: { params: { borrow
             <Edit3 size={17} />
             Edit borrower
           </Link>
-          <SendToAriveButton borrowerId={borrower.id} alreadySent={borrower.ariveStatus === "sent"} />
+          <SendToAriveButton borrowerId={borrower.id} alreadySent={["sent", "synced"].includes(String(borrower.ariveSyncStatus ?? borrower.ariveStatus))} hasError={borrower.ariveSyncStatus === "error"} />
           <ArchiveDeleteActions recordId={borrower.id} recordType="borrower" returnHref="/borrowers" compact={false} />
         </div>
       </div>
@@ -77,7 +77,7 @@ export default async function BorrowerProfilePage({ params }: { params: { borrow
           <span className="text-sm font-semibold text-brand-ink">Linked statuses</span>
           <Badge tone="blue">Lead: {linkedLeadStatus ?? "No linked lead"}</Badge>
           <Badge tone="green">Borrower: {(borrower as BorrowerProfileData & { borrowerStatusLabel?: string }).borrowerStatusLabel ?? "File Started"}</Badge>
-          <Badge tone={borrower.ariveStatus === "sent" ? "green" : "slate"}>ARIVE: {borrower.ariveStatus === "sent" ? `Sent ${formatDate(borrower.ariveSentAt)}` : "Not sent"}</Badge>
+          <Badge tone={ariveTone(borrower.ariveSyncStatus ?? borrower.ariveStatus)}>ARIVE: {ariveLabel(borrower)}</Badge>
         </CardContent>
       </Card>
 
@@ -149,7 +149,12 @@ function mapBorrower(row: Record<string, string | number | boolean | null>, owne
     borrowerStatusLabel: statusLabel(String(row.borrower_status ?? "file_started")),
     ariveStatus: row.arive_status ? String(row.arive_status) : null,
     ariveSentAt: row.arive_sent_at ? String(row.arive_sent_at) : null,
-    ariveReferenceId: row.arive_reference_id ? String(row.arive_reference_id) : null
+    ariveReferenceId: row.arive_reference_id ? String(row.arive_reference_id) : null,
+    ariveLoanId: row.arive_loan_id ? String(row.arive_loan_id) : null,
+    ariveSyncStatus: row.arive_sync_status ? String(row.arive_sync_status) : row.arive_status ? String(row.arive_status) : "not_synced",
+    ariveLastSyncedAt: row.arive_last_synced_at ? String(row.arive_last_synced_at) : null,
+    ariveSyncError: row.arive_sync_error ? String(row.arive_sync_error) : null,
+    sentToAriveAt: row.sent_to_arive_at ? String(row.sent_to_arive_at) : row.arive_sent_at ? String(row.arive_sent_at) : null
   } as BorrowerProfileData & { borrowerStatus: string; borrowerStatusLabel: string };
 }
 
@@ -159,6 +164,22 @@ function statusLabel(status: string) {
 
 function formatDate(value?: string | null) {
   return value ? value.slice(0, 10) : "Not sent";
+}
+
+function ariveTone(status?: string | null): "blue" | "green" | "gold" | "red" | "slate" {
+  if (status === "error") return "red";
+  if (status === "pending") return "gold";
+  if (status === "sent" || status === "synced") return "green";
+  return "slate";
+}
+
+function ariveLabel(borrower: BorrowerProfileData) {
+  const status = borrower.ariveSyncStatus ?? borrower.ariveStatus;
+  if (status === "error") return "Sync error";
+  if (status === "pending") return "Pending";
+  if (status === "synced") return `Synced ${formatDate(borrower.ariveLastSyncedAt ?? borrower.sentToAriveAt)}`;
+  if (status === "sent") return `Sent ${formatDate(borrower.sentToAriveAt ?? borrower.ariveSentAt)}`;
+  return "Not sent";
 }
 
 function BorrowerNotFound() {

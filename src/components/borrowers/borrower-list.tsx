@@ -11,16 +11,26 @@ import { borrowers } from "@/lib/data/borrowers";
 
 export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrowers?: typeof borrowers }) {
   const [recordState, setRecordState] = useState("Active");
+  const [ariveFilter, setAriveFilter] = useState("All");
   const filteredBorrowers = useMemo(
     () =>
-      initialBorrowers.filter((borrower) =>
-        recordState === "Active"
-          ? !borrower.archivedAt && !borrower.deletedAt
-          : recordState === "Archived"
-            ? Boolean(borrower.archivedAt) && !borrower.deletedAt
-            : Boolean(borrower.deletedAt)
-      ),
-    [initialBorrowers, recordState]
+      initialBorrowers.filter((borrower) => {
+        const recordMatches =
+          recordState === "Active"
+            ? !borrower.archivedAt && !borrower.deletedAt
+            : recordState === "Archived"
+              ? Boolean(borrower.archivedAt) && !borrower.deletedAt
+              : Boolean(borrower.deletedAt);
+        const syncStatus = borrower.ariveSyncStatus ?? borrower.ariveStatus ?? "not_synced";
+        const ariveMatches =
+          ariveFilter === "All" ||
+          (ariveFilter === "Not sent to ARIVE" && !["pending", "sent", "synced"].includes(String(syncStatus))) ||
+          (ariveFilter === "Sent to ARIVE" && ["pending", "sent", "synced"].includes(String(syncStatus))) ||
+          (ariveFilter === "Sync error" && syncStatus === "error");
+
+        return recordMatches && ariveMatches;
+      }),
+    [ariveFilter, initialBorrowers, recordState]
   );
 
   return (
@@ -44,18 +54,32 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Borrower Profiles</CardTitle>
-          <select
-            value={recordState}
-            onChange={(event) => setRecordState(event.target.value)}
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
-            aria-label="Borrower record status"
-          >
-            {["Active", "Archived", "Deleted"].map((option) => (
-              <option key={option} value={option}>
-                {option} borrowers
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select
+              value={ariveFilter}
+              onChange={(event) => setAriveFilter(event.target.value)}
+              className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+              aria-label="ARIVE sync status"
+            >
+              {["All", "Not sent to ARIVE", "Sent to ARIVE", "Sync error"].map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <select
+              value={recordState}
+              onChange={(event) => setRecordState(event.target.value)}
+              className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20"
+              aria-label="Borrower record status"
+            >
+              {["Active", "Archived", "Deleted"].map((option) => (
+                <option key={option} value={option}>
+                  {option} borrowers
+                </option>
+              ))}
+            </select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="max-w-full overflow-x-auto">
@@ -83,7 +107,7 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
                     </td>
                     <td className="px-3 py-4 text-slate-700">${borrower.loanScenario.loanAmount.toLocaleString()}</td>
                     <td className="px-3 py-4">
-                      <Badge tone={borrower.ariveStatus === "sent" ? "green" : "slate"}>{borrower.ariveStatus === "sent" ? "Sent" : "Not sent"}</Badge>
+                      <Badge tone={ariveTone(borrower.ariveSyncStatus ?? borrower.ariveStatus)}>{ariveLabel(borrower.ariveSyncStatus ?? borrower.ariveStatus)}</Badge>
                     </td>
                     <td className="px-3 py-4 text-slate-700">{borrower.assignedLoanOfficer}</td>
                     <td className="px-3 py-4">
@@ -112,4 +136,19 @@ export function BorrowerList({ initialBorrowers = borrowers }: { initialBorrower
 function creditDisplay(borrower: (typeof borrowers)[number]) {
   if (borrower.credit.estimatedScore) return borrower.credit.estimatedScore.toString();
   return borrower.credit.scoreRange || "Unknown";
+}
+
+function ariveTone(status?: string | null): "blue" | "green" | "gold" | "red" | "slate" {
+  if (status === "error") return "red";
+  if (status === "pending") return "gold";
+  if (status === "sent" || status === "synced") return "green";
+  return "slate";
+}
+
+function ariveLabel(status?: string | null) {
+  if (status === "error") return "Error";
+  if (status === "pending") return "Pending";
+  if (status === "synced") return "Synced";
+  if (status === "sent") return "Sent";
+  return "Not sent";
 }
